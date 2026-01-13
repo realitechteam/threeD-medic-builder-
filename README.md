@@ -2,11 +2,9 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# 3D Medical Builder
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/drive/12GNqThmLo_yFsRanhCP96_MWwWdCTc8K
+A 3D educational builder for creating interactive medical training scenarios using Three.js and React.
 
 ## Run Locally
 
@@ -14,7 +12,18 @@ View your app in AI Studio: https://ai.studio/apps/drive/12GNqThmLo_yFsRanhCP96_
 
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+   ```bash
+   npm install
+   ```
+2. Run the app:
+   ```bash
+   npm run dev
+   ```
+
+## Build for Production
+
+```bash
+npm run build
+```
+
+The static files will be in the `dist/` folder, ready to deploy to any static hosting service (Vercel, Netlify, GitHub Pages, etc.).

@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { Plus, Trash2, MousePointer2, Sparkles, Move, Anchor } from 'lucide-react';
+import { Plus, Trash2, MousePointer2, Move, Anchor } from 'lucide-react';
 import { Step, Asset, Vector3Tuple } from '../types';
-import { GoogleGenAI } from "@google/genai";
 
 interface StepManagerProps {
   steps: Step[];
@@ -31,26 +30,7 @@ const StepManager: React.FC<StepManagerProps> = ({ steps, assets, onUpdateSteps,
     onUpdateSteps(steps.filter(s => s.id !== id));
   };
 
-  const handleAISuggestion = async (stepId: string) => {
-    const step = steps.find(s => s.id === stepId);
-    if (!step) return;
 
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `Write a short, engaging 2-sentence educational instruction for a 3D lesson. The current step is "${step.title}". Focus on being concise for a student viewer. Action type: ${step.targetAction}.`;
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-      });
-
-      if (response.text) {
-        updateStep(stepId, { instruction: response.text.trim() });
-      }
-    } catch (error) {
-      console.error("AI Generation failed", error);
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -63,39 +43,31 @@ const StepManager: React.FC<StepManagerProps> = ({ steps, assets, onUpdateSteps,
             </button>
           </div>
 
-          <input 
+          <input
             className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm font-medium focus:ring-1 focus:ring-blue-500"
             value={step.title}
             placeholder="Step Title"
             onChange={(e) => updateStep(step.id, { title: e.target.value })}
           />
 
-          <div className="relative">
-            <textarea 
-              className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 h-20 resize-none leading-relaxed"
-              value={step.instruction}
-              placeholder="Instruction for students..."
-              onChange={(e) => updateStep(step.id, { instruction: e.target.value })}
-            />
-            <button 
-              onClick={() => handleAISuggestion(step.id)}
-              className="absolute bottom-2 right-2 p-1.5 bg-blue-600 rounded-lg text-white hover:bg-blue-500 transition-colors shadow-lg"
-            >
-              <Sparkles size={12} />
-            </button>
-          </div>
+          <textarea
+            className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 h-20 resize-none leading-relaxed"
+            value={step.instruction}
+            placeholder="Instruction for students..."
+            onChange={(e) => updateStep(step.id, { instruction: e.target.value })}
+          />
 
           <div className="space-y-3 pt-2 border-t border-slate-700/50">
             <div className="space-y-1">
               <label className="text-[9px] uppercase font-bold text-slate-500 flex items-center gap-1">
                 <MousePointer2 size={10} /> Movable Object
               </label>
-              <select 
+              <select
                 className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[10px] focus:ring-1 focus:ring-blue-500"
                 value={step.targetAssetId || ''}
-                onChange={(e) => updateStep(step.id, { 
-                  targetAssetId: e.target.value, 
-                  targetAction: e.target.value ? (step.targetAction === 'none' ? 'click' : step.targetAction) : 'none' 
+                onChange={(e) => updateStep(step.id, {
+                  targetAssetId: e.target.value,
+                  targetAction: e.target.value ? (step.targetAction === 'none' ? 'click' : step.targetAction) : 'none'
                 })}
               >
                 <option value="">No object selected</option>
@@ -109,13 +81,13 @@ const StepManager: React.FC<StepManagerProps> = ({ steps, assets, onUpdateSteps,
               <div className="space-y-1">
                 <label className="text-[9px] uppercase font-bold text-slate-500">Interaction Type</label>
                 <div className="flex gap-2">
-                  <button 
+                  <button
                     onClick={() => updateStep(step.id, { targetAction: 'click' })}
                     className={`flex-1 py-1 text-[10px] rounded font-bold transition-colors ${step.targetAction === 'click' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}
                   >
                     CLICK
                   </button>
-                  <button 
+                  <button
                     onClick={() => updateStep(step.id, { targetAction: 'move' })}
                     className={`flex-1 py-1 text-[10px] rounded font-bold transition-colors ${step.targetAction === 'move' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}
                   >
@@ -131,16 +103,16 @@ const StepManager: React.FC<StepManagerProps> = ({ steps, assets, onUpdateSteps,
                   <label className="text-[9px] font-bold text-blue-400 flex items-center gap-1">
                     <Anchor size={10} /> SNAP TO TARGET
                   </label>
-                  <select 
+                  <select
                     className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[10px] focus:ring-1 focus:ring-blue-500 text-blue-100"
                     value={step.snapAnchorId || ''}
                     onChange={(e) => {
-                       const anchorId = e.target.value;
-                       const anchorAsset = assets.find(a => a.id === anchorId);
-                       updateStep(step.id, { 
-                         snapAnchorId: anchorId,
-                         targetPosition: anchorAsset ? [...anchorAsset.position] as Vector3Tuple : undefined
-                       });
+                      const anchorId = e.target.value;
+                      const anchorAsset = assets.find(a => a.id === anchorId);
+                      updateStep(step.id, {
+                        snapAnchorId: anchorId,
+                        targetPosition: anchorAsset ? [...anchorAsset.position] as Vector3Tuple : undefined
+                      });
                     }}
                   >
                     <option value="">Select Destination Object...</option>
@@ -158,7 +130,7 @@ const StepManager: React.FC<StepManagerProps> = ({ steps, assets, onUpdateSteps,
         </div>
       ))}
 
-      <button 
+      <button
         onClick={addStep}
         className="w-full py-4 border-2 border-dashed border-slate-700 rounded-xl text-slate-500 hover:border-blue-500 hover:text-blue-400 flex flex-col items-center justify-center gap-2 transition-all active:scale-95"
       >
