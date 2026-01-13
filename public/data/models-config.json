@@ -1,0 +1,75 @@
+{
+    "shapes": [
+        {
+            "label": "Cube",
+            "icon": "Box",
+            "subType": "box"
+        },
+        {
+            "label": "Sphere",
+            "icon": "Circle",
+            "subType": "sphere"
+        },
+        {
+            "label": "Cone",
+            "icon": "Triangle",
+            "subType": "cone"
+        },
+        {
+            "label": "Torus",
+            "icon": "Layers",
+            "subType": "torus"
+        }
+    ],
+    "humanModels": [
+        {
+            "label": "Patient V1",
+            "icon": "User",
+            "url": "/models/patient/patient-v1.glb"
+        },
+        {
+            "label": "Patient V2",
+            "icon": "User",
+            "url": "/models/patient/patient-v2.glb"
+        }
+    ],
+    "facilityModels": [
+        {
+            "label": "Medical Bed",
+            "icon": "Box",
+            "url": "/models/Facility/bed.glb"
+        },
+        {
+            "label": "Scanner",
+            "icon": "Box",
+            "url": "/models/Facility/scaner.glb"
+        },
+        {
+            "label": "Table",
+            "icon": "Box",
+            "url": "/models/Facility/table.glb"
+        },
+        {
+            "label": "Medical Processor",
+            "icon": "Box",
+            "url": "/models/Facility/Medical_processor_2.glb"
+        }
+    ],
+    "roomModels": [
+        {
+            "label": "Main Hospital",
+            "icon": "Layers",
+            "url": "/models/rooms/mainHospital.glb"
+        },
+        {
+            "label": "Operating Room",
+            "icon": "Layers",
+            "url": "/models/rooms/hospital_operating_room.glb"
+        },
+        {
+            "label": "Event Room",
+            "icon": "Layers",
+            "url": "/models/rooms/fora_tac_eventi_-_duplicato_2.glb"
+        }
+    ]
+}

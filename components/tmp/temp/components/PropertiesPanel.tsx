@@ -1,0 +1,92 @@
+
+import React from 'react';
+import { Asset, Vector3Tuple } from '../types';
+import { Eye, EyeOff } from 'lucide-react';
+
+interface PropertiesPanelProps {
+  asset: Asset;
+  onChange: (updates: Partial<Asset>) => void;
+}
+
+const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ asset, onChange }) => {
+  const handleVectorChange = (key: 'position' | 'rotation' | 'scale', axis: number, value: string) => {
+    const newVal = parseFloat(value);
+    if (isNaN(newVal)) return;
+    const current = [...asset[key]] as Vector3Tuple;
+    current[axis] = newVal;
+    onChange({ [key]: current });
+  };
+
+  return (
+    <div className="p-4 space-y-6">
+      <div className="flex items-center justify-between">
+         <label className="text-[10px] uppercase font-bold text-slate-500">Visibility</label>
+         <button 
+           onClick={() => onChange({ visible: asset.visible === false ? true : false })}
+           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${asset.visible === false ? 'bg-slate-800 text-slate-400' : 'bg-blue-600/20 text-blue-400 border border-blue-500/30'}`}
+         >
+           {asset.visible === false ? <><EyeOff size={14} /> Hidden</> : <><Eye size={14} /> Visible</>}
+         </button>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-[10px] uppercase font-bold text-slate-500">Name</label>
+        <input 
+          className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"
+          value={asset.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+        />
+      </div>
+
+      {asset.type === 'text' && (
+        <div className="space-y-2">
+          <label className="text-[10px] uppercase font-bold text-slate-500">Content</label>
+          <textarea 
+            className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 h-20 resize-none"
+            value={asset.content}
+            onChange={(e) => onChange({ content: e.target.value })}
+          />
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <label className="text-[10px] uppercase font-bold text-slate-500">Color</label>
+        <div className="flex gap-2 items-center">
+          <input 
+            type="color"
+            className="w-10 h-10 bg-transparent border-none cursor-pointer"
+            value={asset.color}
+            onChange={(e) => onChange({ color: e.target.value })}
+          />
+          <input 
+            className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm uppercase font-mono"
+            value={asset.color}
+            onChange={(e) => onChange({ color: e.target.value })}
+          />
+        </div>
+      </div>
+
+      {(['position', 'rotation', 'scale'] as const).map(prop => (
+        <div key={prop} className="space-y-2">
+          <label className="text-[10px] uppercase font-bold text-slate-500">{prop}</label>
+          <div className="grid grid-cols-3 gap-2">
+            {['X', 'Y', 'Z'].map((axis, i) => (
+              <div key={axis} className="flex flex-col gap-1">
+                <span className="text-[9px] text-slate-600 font-mono text-center">{axis}</span>
+                <input 
+                  type="number"
+                  step="0.1"
+                  className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-center focus:ring-1 focus:ring-blue-500"
+                  value={Number(asset[prop][i]).toFixed(2)}
+                  onChange={(e) => handleVectorChange(prop, i, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default PropertiesPanel;
