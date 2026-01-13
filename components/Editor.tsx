@@ -18,10 +18,10 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode }) => {
   const [activeProject, setActiveProject] = useState<ProjectData>(project);
 
   // Sync state with props when project changes (state update from parent)
-  React.useEffect(() => {
-    setActiveProject(project);
-    setLastSaved(null); // Reset save timer on new load
-  }, [project]);
+  // React.useEffect(() => {
+  //   setActiveProject(project);
+  //   setLastSaved(null); // Reset save timer on new load
+  // }, [project]);
 
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'library' | 'steps' | 'layers'>('library');

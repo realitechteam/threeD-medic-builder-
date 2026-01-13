@@ -26,11 +26,6 @@
             "label": "Patient V1",
             "icon": "User",
             "url": "/models/patient/patient-v1.glb"
-        },
-        {
-            "label": "Patient V2",
-            "icon": "User",
-            "url": "/models/patient/patient-v2.glb"
         }
     ],
     "facilityModels": [

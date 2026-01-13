@@ -109,7 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddAsset }) => {
         </button>
       </section>
 
-      <section>
+      {/* <section>
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Geometric Shapes</h4>
           <span className="text-[10px] text-slate-600 italic">Drag to scene</span>
@@ -128,7 +128,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddAsset }) => {
             </button>
           ))}
         </div>
-      </section>
+      </section> */}
 
       <section>
         <div className="flex items-center justify-between mb-4">
