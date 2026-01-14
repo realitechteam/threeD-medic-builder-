@@ -35,6 +35,7 @@ const DEFAULT_PROJECT: ProjectData = {
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.EDITOR);
   const [project, setProject] = useState<ProjectData>(DEFAULT_PROJECT);
+  const [testMode, setTestMode] = useState<'auto' | 'desktop' | 'mobile' | 'vr'>('auto');
 
   const handleSave = (newProject: ProjectData) => {
     setProject(newProject);
@@ -66,11 +67,14 @@ const App: React.FC = () => {
           project={project}
           onSave={handleSave}
           onSwitchMode={handleSwitchMode}
+          testMode={testMode}
+          onTestModeChange={setTestMode}
         />
       ) : (
         <Viewer
           project={project}
           onExit={() => setMode(AppMode.EDITOR)}
+          testMode={testMode}
         />
       )}
     </div>

@@ -6,15 +6,17 @@ import Viewport from './Viewport';
 import Sidebar from './Sidebar';
 import PropertiesPanel from './PropertiesPanel';
 import StepManager from './StepManager';
-import { Save, Play, Download, Trash2, Box, Type, Layers, Eye, EyeOff, CheckCircle, FolderOpen, User } from 'lucide-react';
+import { Save, Play, Download, Trash2, Box, Type, Layers, Eye, EyeOff, CheckCircle, FolderOpen, User, Monitor, Smartphone, Glasses } from 'lucide-react';
 
 interface EditorProps {
   project: ProjectData;
   onSave: (project: ProjectData) => void;
   onSwitchMode: (updatedProject: ProjectData) => void;
+  testMode: 'auto' | 'desktop' | 'mobile' | 'vr';
+  onTestModeChange: (mode: 'auto' | 'desktop' | 'mobile' | 'vr') => void;
 }
 
-const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode }) => {
+const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode, onTestModeChange }) => {
   const [activeProject, setActiveProject] = useState<ProjectData>(project);
 
   // Sync state with props when project changes (state update from parent)
@@ -288,6 +290,27 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode }) => {
           >
             <Play size={18} /> Preview
           </button>
+
+          {/* Test Mode Selector */}
+          <div className="relative">
+            <select
+              value={testMode}
+              onChange={(e) => onTestModeChange(e.target.value as any)}
+              className="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg text-sm font-medium shadow-lg cursor-pointer appearance-none pr-8 transition-colors"
+              title="Select preview mode for testing"
+            >
+              <option value="auto">🔄 Auto Detect</option>
+              <option value="desktop">🖥️ Desktop</option>
+              <option value="mobile">📱 Mobile</option>
+              <option value="vr">🥽 VR</option>
+            </select>
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M3 5L6 8L9 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          </div>
+
           <button
             onClick={handleExport}
             className="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-lg transition-transform active:scale-95"
