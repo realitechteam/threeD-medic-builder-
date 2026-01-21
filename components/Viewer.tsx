@@ -95,20 +95,67 @@ const Joystick = ({ onMove, position = 'left', color = 'blue' }: {
 
 
 // Unified Player Controller (Desktop/Mobile/VR)
-// Unified Player Controller (Desktop/Mobile/VR)
-const Player = ({ initialPos, joystickInput, lookInput, collidableAssets }: {
+const Player = ({ initialPos, joystickInput, lookInput, collidableAssets, isMobile }: {
   initialPos: Vector3Tuple;
   joystickInput: { x: number; y: number };
   lookInput: { x: number; y: number };
   collidableAssets: Asset[];
+  isMobile: boolean;
 }) => {
-  const { camera, scene } = useThree();
+  const { camera, scene, gl } = useThree();
   const { isPresenting } = useXR();
   const velocity = useRef(new THREE.Vector3());
   const moveState = useRef({ forward: false, backward: false, left: false, right: false });
   const hasInitialized = useRef(false);
   const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
   const raycaster = useRef(new THREE.Raycaster());
+
+  // Mouse Drag Logic (Desktop Only)
+  useEffect(() => {
+    if (isMobile) return;
+
+    let isDragging = false;
+    let prevX = 0;
+    let prevY = 0;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      // Only drag if clicking on the canvas (not UI)
+      if ((e.target as HTMLElement).tagName !== 'CANVAS') return;
+      isDragging = true;
+      prevX = e.clientX;
+      prevY = e.clientY;
+    };
+
+    const handleMouseUp = () => {
+      isDragging = false;
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || isPresenting) return;
+
+      const deltaX = e.clientX - prevX;
+      const deltaY = e.clientY - prevY;
+      prevX = e.clientX;
+      prevY = e.clientY;
+
+      euler.current.setFromQuaternion(camera.quaternion);
+      euler.current.y -= deltaX * 0.002;
+      euler.current.x -= deltaY * 0.002;
+      euler.current.z = 0;
+      euler.current.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, euler.current.x));
+      camera.quaternion.setFromEuler(euler.current);
+    };
+
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [camera, isPresenting, isMobile]);
 
   useEffect(() => {
     if (!hasInitialized.current) {
@@ -149,13 +196,13 @@ const Player = ({ initialPos, joystickInput, lookInput, collidableAssets }: {
     const playerRadius = 0.5;
     const lookSpeed = 2.5;
 
-    // Apply rotation from look joystick
+    // Apply rotation from look joystick (Mobile)
     if (lookInput.x !== 0 || lookInput.y !== 0) {
       euler.current.setFromQuaternion(camera.quaternion);
-      euler.current.y -= lookInput.x * lookSpeed * delta; // Yaw (left/right)
-      euler.current.x += lookInput.y * lookSpeed * delta; // Pitch (up/down)
-      euler.current.z = 0; // Lock roll
-      euler.current.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, euler.current.x)); // Clamp pitch
+      euler.current.y -= lookInput.x * lookSpeed * delta;
+      euler.current.x += lookInput.y * lookSpeed * delta;
+      euler.current.z = 0;
+      euler.current.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, euler.current.x));
       camera.quaternion.setFromEuler(euler.current);
     }
 
@@ -216,7 +263,6 @@ const Player = ({ initialPos, joystickInput, lookInput, collidableAssets }: {
 
       // If collision imminent
       if (hits.length > 0 && hits[0].distance < (playerRadius + nextMove.length())) {
-        // Stop (or slide - simple stop for now as per reference)
         velocity.current.set(0, 0, 0);
       } else {
         camera.position.add(nextMove);
@@ -312,27 +358,34 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto' }) =
     }
   };
 
-  const handleInteraction = (scene: THREE.Scene, camera: THREE.Camera) => {
+  const handleInteraction = (scene: THREE.Scene, camera: THREE.Camera, clientX?: number, clientY?: number) => {
     if (completed || isSnapped) return;
+
+    // Calculate mouse position
+    const mouse = new THREE.Vector2();
+    if (clientX !== undefined && clientY !== undefined) {
+      // Desktop: use cursor position
+      mouse.x = (clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+    } else {
+      // Mobile: use center of screen (0,0) as virtual "cursor"
+      mouse.x = 0;
+      mouse.y = 0;
+    }
 
     raycaster.current.setFromCamera(mouse, camera);
     const intersects = raycaster.current.intersectObjects(scene.children, true);
 
     if (intersects.length > 0) {
-      // Find the asset ID from the intersected object (traversing up to find primitive/mesh with userData)
+      // Find the asset ID
       let targetObj = intersects[0].object;
       while (targetObj && !targetObj.name && targetObj.parent) {
         targetObj = targetObj.parent;
       }
 
-      const assetId = targetObj.name || targetObj.uuid; // This is a bit simplified, in real apps we'd map this better
-
-      // Checking for the current target asset
+      const assetId = targetObj.name || targetObj.uuid;
       const targetAsset = sessionAssets.find(a => a.id === currentStep?.targetAssetId);
 
-      // In this version, we detect if the ray intersects the target asset's bounding box/mesh
-      // For simplicity, we'll check if any part of the intersected object belongs to the target ID
-      // Mapping names correctly is key
       if (currentStep?.targetAction === 'click' && targetAsset) {
         handleNext();
       } else if (currentStep?.targetAction === 'move' && targetAsset && !isHolding) {
@@ -343,7 +396,9 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto' }) =
 
   // Carrying and Snapping Logic
   const InteractionManager = () => {
-    const { camera, scene } = useThree();
+    const { camera, scene, gl } = useThree();
+    const dragThreshold = 5; // pixels
+    const mouseDownPos = useRef({ x: 0, y: 0 });
 
     useFrame(() => {
       if (isHolding && currentStep?.targetAssetId && !isSnapped) {
@@ -371,16 +426,45 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto' }) =
     });
 
     useEffect(() => {
-      const handleClick = () => {
-        if (!isMobile && !isLocked) return;
-        handleInteraction(scene, camera);
-      };
-      window.addEventListener('click', handleClick);
-      window.addEventListener('touchstart', handleClick);
-      return () => {
-        window.removeEventListener('click', handleClick);
-        window.removeEventListener('touchstart', handleClick);
-      };
+      const canvas = gl.domElement;
+
+      // Mobile Handling (Center Raycast)
+      if (isMobile) {
+        const handleTap = () => {
+          handleInteraction(scene, camera); // Center
+        };
+        // Using window for broader touch area or canvas? Canvas preferred to avoid UI click through
+        canvas.addEventListener('touchstart', handleTap);
+        canvas.addEventListener('click', handleTap);
+        return () => {
+          canvas.removeEventListener('touchstart', handleTap);
+          canvas.removeEventListener('click', handleTap);
+        };
+      }
+
+      // Desktop Handling (Cursor Raycast with Drag Check)
+      else {
+        const handleMouseDown = (e: MouseEvent) => {
+          mouseDownPos.current = { x: e.clientX, y: e.clientY };
+        };
+
+        const handleMouseUp = (e: MouseEvent) => {
+          const dist = Math.sqrt(
+            Math.pow(e.clientX - mouseDownPos.current.x, 2) +
+            Math.pow(e.clientY - mouseDownPos.current.y, 2)
+          );
+          if (dist < dragThreshold) {
+            handleInteraction(scene, camera, e.clientX, e.clientY);
+          }
+        };
+
+        canvas.addEventListener('mousedown', handleMouseDown);
+        canvas.addEventListener('mouseup', handleMouseUp);
+        return () => {
+          canvas.removeEventListener('mousedown', handleMouseDown);
+          canvas.removeEventListener('mouseup', handleMouseUp);
+        };
+      }
     }, [scene, camera, isLocked, isHolding, isSnapped, isMobile]);
 
     return null;
@@ -400,10 +484,10 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto' }) =
             <ambientLight intensity={0.5} />
             <pointLight position={[10, 10, 10]} intensity={1} />
 
-            {!isMobile && <PointerLockControls onLock={() => setIsLocked(true)} onUnlock={() => setIsLocked(false)} />}
+            {/* PointerLockControls removed for free mouse movement */}
 
             <Controllers />
-            <Player initialPos={playerStart.position} joystickInput={joystickVal} lookInput={lookVal} collidableAssets={collidableAssets} />
+            <Player initialPos={playerStart.position} joystickInput={joystickVal} lookInput={lookVal} collidableAssets={collidableAssets} isMobile={isMobile} />
             <InteractionManager />
 
             <gridHelper args={[100, 100, 0x222222, 0x111111]} position={[0, 0, 0]} />
@@ -484,36 +568,20 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto' }) =
         )}
       </div>
 
-      {/* Crosshair (Desktop only) */}
-      {!isMobile && isLocked && !completed && (
-        <div className="fixed inset-0 pointer-events-none flex items-center justify-center">
-          <div className={`w-1 h-1 rounded-full bg-white ring-4 transition-all duration-300 ${isHolding ? 'ring-blue-500 scale-150' : 'ring-white/20'}`} />
-          <div className="absolute w-6 h-6 border-2 border-white/10 rounded-full" />
-        </div>
-      )}
-
-      {/* Start Instructions */}
-      {!isLocked && !completed && !isMobile && (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm z-40">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-            className="bg-slate-900 border border-slate-700 p-8 rounded-[2rem] text-center shadow-2xl max-w-sm"
-          >
-            <MousePointer className="mx-auto mb-4 text-blue-400" size={48} />
-            <h2 className="text-2xl font-bold mb-2">Desktop Viewer</h2>
-            <p className="text-slate-400 text-sm mb-6">Click anywhere to lock your cursor and start the 3D lesson.</p>
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-slate-800 p-3 rounded-xl border border-slate-700">
-                <div className="text-xs font-bold text-slate-500 mb-1 uppercase">Move</div>
-                <div className="text-white font-black tracking-widest">W A S D</div>
-              </div>
-              <div className="bg-slate-800 p-3 rounded-xl border border-slate-700">
-                <div className="text-xs font-bold text-slate-500 mb-1 uppercase">Action</div>
-                <div className="text-white font-black tracking-widest">CLICK</div>
-              </div>
+      {/* Start Instructions - Updated for Free Click */}
+      {!completed && !isMobile && (
+        <div className="absolute bottom-6 right-6 pointer-events-none z-40">
+          <div className="bg-slate-900/80 backdrop-blur-md border border-slate-700 p-4 rounded-2xl shadow-xl flex gap-4">
+            <div className="text-center">
+              <MousePointer className="mx-auto text-blue-400 mb-1" size={20} />
+              <div className="text-[9px] text-slate-400 font-bold uppercase">Drag to Look</div>
             </div>
-            <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold">Press ESC to unlock cursor</p>
-          </motion.div>
+            <div className="w-px bg-slate-700" />
+            <div className="text-center">
+              <Move className="mx-auto text-blue-400 mb-1" size={20} />
+              <div className="text-[9px] text-slate-400 font-bold uppercase">WASD to Move</div>
+            </div>
+          </div>
         </div>
       )}
 
