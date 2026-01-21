@@ -14,6 +14,7 @@ export interface Asset {
   url?: string;
   visible?: boolean;
   locked?: boolean;
+  isCollidable?: boolean;
 }
 
 export interface Step {

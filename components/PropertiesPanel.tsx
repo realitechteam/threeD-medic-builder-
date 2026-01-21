@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Asset, Vector3Tuple } from '../types';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Shield, ShieldOff } from 'lucide-react';
 
 interface PropertiesPanelProps {
   asset: Asset;
@@ -20,18 +20,28 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ asset, onChange }) =>
   return (
     <div className="p-4 space-y-6">
       <div className="flex items-center justify-between">
-         <label className="text-[10px] uppercase font-bold text-slate-500">Visibility</label>
-         <button 
-           onClick={() => onChange({ visible: asset.visible === false ? true : false })}
-           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${asset.visible === false ? 'bg-slate-800 text-slate-400' : 'bg-blue-600/20 text-blue-400 border border-blue-500/30'}`}
-         >
-           {asset.visible === false ? <><EyeOff size={14} /> Hidden</> : <><Eye size={14} /> Visible</>}
-         </button>
+        <label className="text-[10px] uppercase font-bold text-slate-500">Visibility</label>
+        <button
+          onClick={() => onChange({ visible: asset.visible === false ? true : false })}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${asset.visible === false ? 'bg-slate-800 text-slate-400' : 'bg-blue-600/20 text-blue-400 border border-blue-500/30'}`}
+        >
+          {asset.visible === false ? <><EyeOff size={14} /> Hidden</> : <><Eye size={14} /> Visible</>}
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] uppercase font-bold text-slate-500">Collision</label>
+        <button
+          onClick={() => onChange({ isCollidable: asset.isCollidable === false ? true : false })}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${asset.isCollidable === false ? 'bg-slate-800 text-slate-400' : 'bg-green-600/20 text-green-400 border border-green-500/30'}`}
+        >
+          {asset.isCollidable === false ? <><ShieldOff size={14} /> Disabled</> : <><Shield size={14} /> Enabled</>}
+        </button>
       </div>
 
       <div className="space-y-2">
         <label className="text-[10px] uppercase font-bold text-slate-500">Name</label>
-        <input 
+        <input
           className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500"
           value={asset.name}
           onChange={(e) => onChange({ name: e.target.value })}
@@ -41,7 +51,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ asset, onChange }) =>
       {asset.type === 'text' && (
         <div className="space-y-2">
           <label className="text-[10px] uppercase font-bold text-slate-500">Content</label>
-          <textarea 
+          <textarea
             className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 h-20 resize-none"
             value={asset.content}
             onChange={(e) => onChange({ content: e.target.value })}
@@ -52,13 +62,13 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ asset, onChange }) =>
       <div className="space-y-2">
         <label className="text-[10px] uppercase font-bold text-slate-500">Color</label>
         <div className="flex gap-2 items-center">
-          <input 
+          <input
             type="color"
             className="w-10 h-10 bg-transparent border-none cursor-pointer"
             value={asset.color}
             onChange={(e) => onChange({ color: e.target.value })}
           />
-          <input 
+          <input
             className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm uppercase font-mono"
             value={asset.color}
             onChange={(e) => onChange({ color: e.target.value })}
@@ -73,7 +83,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ asset, onChange }) =>
             {['X', 'Y', 'Z'].map((axis, i) => (
               <div key={axis} className="flex flex-col gap-1">
                 <span className="text-[9px] text-slate-600 font-mono text-center">{axis}</span>
-                <input 
+                <input
                   type="number"
                   step="0.1"
                   className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-center focus:ring-1 focus:ring-blue-500"

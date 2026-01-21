@@ -95,17 +95,20 @@ const Joystick = ({ onMove, position = 'left', color = 'blue' }: {
 
 
 // Unified Player Controller (Desktop/Mobile/VR)
-const Player = ({ initialPos, joystickInput, lookInput }: {
+// Unified Player Controller (Desktop/Mobile/VR)
+const Player = ({ initialPos, joystickInput, lookInput, collidableAssets }: {
   initialPos: Vector3Tuple;
   joystickInput: { x: number; y: number };
   lookInput: { x: number; y: number };
+  collidableAssets: Asset[];
 }) => {
-  const { camera } = useThree();
+  const { camera, scene } = useThree();
   const { isPresenting } = useXR();
   const velocity = useRef(new THREE.Vector3());
   const moveState = useRef({ forward: false, backward: false, left: false, right: false });
   const hasInitialized = useRef(false);
   const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+  const raycaster = useRef(new THREE.Raycaster());
 
   useEffect(() => {
     if (!hasInitialized.current) {
@@ -141,8 +144,9 @@ const Player = ({ initialPos, joystickInput, lookInput }: {
   useFrame((state, delta) => {
     if (isPresenting) return; // XR handles its own camera
 
-    const speed = 6;
-    const friction = 12;
+    const speed = 5;
+    const friction = 10;
+    const playerRadius = 0.5;
     const lookSpeed = 2.5;
 
     // Apply rotation from look joystick
@@ -150,27 +154,75 @@ const Player = ({ initialPos, joystickInput, lookInput }: {
       euler.current.setFromQuaternion(camera.quaternion);
       euler.current.y -= lookInput.x * lookSpeed * delta; // Yaw (left/right)
       euler.current.x += lookInput.y * lookSpeed * delta; // Pitch (up/down)
-      euler.current.z = 0; // Lock roll to prevent camera tilt
+      euler.current.z = 0; // Lock roll
       euler.current.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, euler.current.x)); // Clamp pitch
       camera.quaternion.setFromEuler(euler.current);
     }
 
+    // Apply friction
     velocity.current.x -= velocity.current.x * friction * delta;
     velocity.current.z -= velocity.current.z * friction * delta;
 
-    // Keyboard inputs
+    // Calculate movement direction
     const forward = Number(moveState.current.forward) - Number(moveState.current.backward);
     const side = Number(moveState.current.right) - Number(moveState.current.left);
 
-    // Combine with Joystick inputs
-    const moveZ = forward !== 0 ? forward : joystickInput.y;
-    const moveX = side !== 0 ? side : joystickInput.x;
+    // Joystick + Keyboard
+    const moveZInput = forward !== 0 ? forward : joystickInput.y;
+    const moveXInput = side !== 0 ? side : joystickInput.x;
 
-    if (moveZ !== 0) velocity.current.z -= moveZ * speed * 10 * delta;
-    if (moveX !== 0) velocity.current.x -= moveX * speed * 10 * delta;
+    // Camera Direction
+    const camDir = new THREE.Vector3();
+    camera.getWorldDirection(camDir);
+    camDir.y = 0;
+    camDir.normalize();
+    const camSide = new THREE.Vector3().crossVectors(camDir, camera.up).normalize(); // Right vector
 
-    camera.translateX(-velocity.current.x * delta);
-    camera.translateZ(velocity.current.z * delta);
+    const moveDirection = new THREE.Vector3();
+    if (moveZInput !== 0) moveDirection.addScaledVector(camDir, moveZInput);
+    if (moveXInput !== 0) moveDirection.addScaledVector(camSide, moveXInput);
+
+    if (moveDirection.lengthSq() > 0) {
+      moveDirection.normalize();
+      velocity.current.x = moveDirection.x * speed;
+      velocity.current.z = moveDirection.z * speed;
+    }
+
+    // Collision Detection and Movement
+    if (velocity.current.lengthSq() > 0.001) {
+      // 1. Gather all meshes from collidable assets
+      const collidableMeshes: THREE.Object3D[] = [];
+      const collidableIds = new Set(collidableAssets.map(a => a.id));
+
+      scene.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          let p: THREE.Object3D | null = child;
+          while (p) {
+            if (collidableIds.has(p.name)) {
+              collidableMeshes.push(child);
+              break;
+            }
+            p = p.parent;
+          }
+        }
+      });
+
+      // 2. Predict next position
+      const nextMove = velocity.current.clone().multiplyScalar(delta);
+      const moveRayDir = nextMove.clone().normalize();
+
+      raycaster.current.set(camera.position, moveRayDir);
+      const hits = raycaster.current.intersectObjects(collidableMeshes, false);
+
+      // If collision imminent
+      if (hits.length > 0 && hits[0].distance < (playerRadius + nextMove.length())) {
+        // Stop (or slide - simple stop for now as per reference)
+        velocity.current.set(0, 0, 0);
+      } else {
+        camera.position.add(nextMove);
+      }
+    }
+
     camera.position.y = initialPos[1] + 1.6;
   });
 
@@ -182,8 +234,12 @@ const ViewerModel: React.FC<{
   isTarget?: boolean;
   isAnchor?: boolean;
 }> = ({ asset, isTarget, isAnchor }) => {
-  const { scene } = useGLTF(asset.url);
-  const clonedScene = useMemo(() => scene.clone(), [scene]);
+  const { scene } = useGLTF(asset.url!);
+  const clonedScene = useMemo(() => {
+    const s = scene.clone();
+    s.name = asset.id; // Assign ID for collision detection
+    return s;
+  }, [scene, asset.id]);
 
   return (
     <primitive
@@ -238,6 +294,10 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto' }) =
   const playerStart = useMemo(() => {
     return project.assets.find(a => a.type === 'player_start') || { position: [0, 0, 5] };
   }, [project.assets]);
+
+  const collidableAssets = useMemo(() => {
+    return sessionAssets.filter(a => a.isCollidable !== false && a.type !== 'player_start');
+  }, [sessionAssets]);
 
   useEffect(() => {
     setIsSnapped(false);
@@ -343,7 +403,7 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto' }) =
             {!isMobile && <PointerLockControls onLock={() => setIsLocked(true)} onUnlock={() => setIsLocked(false)} />}
 
             <Controllers />
-            <Player initialPos={playerStart.position} joystickInput={joystickVal} lookInput={lookVal} />
+            <Player initialPos={playerStart.position} joystickInput={joystickVal} lookInput={lookVal} collidableAssets={collidableAssets} />
             <InteractionManager />
 
             <gridHelper args={[100, 100, 0x222222, 0x111111]} position={[0, 0, 0]} />
