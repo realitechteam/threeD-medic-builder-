@@ -60,7 +60,7 @@ const PlayerStartMesh: React.FC<{
         <meshStandardMaterial color="#6366f1" emissive="#6366f1" emissiveIntensity={0.2} transparent opacity={0.8} />
       </mesh>
       {/* Eye/Visor to show direction */}
-      <mesh position={[0, 1.4, 0.3]}>
+      <mesh position={[0, 1.4, -0.3]}>
         <boxGeometry args={[0.5, 0.15, 0.1]} />
         <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} />
       </mesh>
