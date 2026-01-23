@@ -6,7 +6,7 @@ import Viewport from './Viewport';
 import Sidebar from './Sidebar';
 import PropertiesPanel from './PropertiesPanel';
 import StepManager from './StepManager';
-import { Save, Play, Download, Trash2, Box, Type, Layers, Eye, EyeOff, CheckCircle, FolderOpen, User, Monitor, Smartphone, Glasses } from 'lucide-react';
+import { Save, Play, Download, Trash2, Box, Type, Layers, Eye, EyeOff, CheckCircle, FolderOpen, User, Monitor, Smartphone, Glasses, Globe, Copy, X, Link, CheckCircle2 } from 'lucide-react';
 
 interface EditorProps {
   project: ProjectData;
@@ -31,6 +31,9 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("Project Saved Successfully!");
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [publishLink, setPublishLink] = useState('');
+  const [copied, setCopied] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleOpen = () => {
@@ -143,6 +146,24 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode
     downloadAnchorNode.remove();
   };
 
+  const handlePublish = () => {
+    try {
+      const jsonStr = JSON.stringify(activeProject);
+      const base64Data = btoa(jsonStr);
+      const fullUrl = `${window.location.origin}${window.location.pathname}#project=${base64Data}`;
+      setPublishLink(fullUrl);
+      setShowPublishModal(true);
+    } catch (e) {
+      alert("Failed to create shareable link. The project might be too large.");
+    }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(publishLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const selectedAsset = activeProject.assets.find(a => a.id === selectedAssetId);
 
   return (
@@ -251,6 +272,37 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode
           )}
         </AnimatePresence>
 
+        <AnimatePresence>
+          {showPublishModal && (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setShowPublishModal(false)} />
+              <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative bg-slate-900 border border-slate-700 w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl overflow-hidden">
+                <div className="absolute top-0 right-0 p-6">
+                  <button onClick={() => setShowPublishModal(false)} className="text-slate-500 hover:text-white transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-20 h-20 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 mb-6">
+                    <Globe size={40} />
+                  </div>
+                  <h2 className="text-3xl font-bold mb-2">Lesson Published!</h2>
+                  <p className="text-slate-400 text-sm mb-8 leading-relaxed">Anyone with this link can experience your 3D lesson directly in their browser.</p>
+                  <div className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl p-4 flex items-center gap-3 mb-8 group">
+                    <Link size={18} className="text-slate-600 shrink-0" />
+                    <input readOnly value={publishLink} className="bg-transparent text-xs text-blue-300 font-mono w-full focus:outline-none select-all overflow-hidden text-ellipsis whitespace-nowrap" />
+                  </div>
+                  <div className="flex gap-4 w-full">
+                    <button onClick={copyToClipboard} className={`flex-1 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${copied ? 'bg-green-600 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
+                      {copied ? <><CheckCircle2 size={20} /> Copied!</> : <><Copy size={20} /> Copy Link</>}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
         <div className="absolute top-4 left-4 flex gap-2">
           <input
             type="file"
@@ -290,6 +342,8 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode
           >
             <Play size={18} /> Preview
           </button>
+
+          <button onClick={handlePublish} className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-lg transition-transform active:scale-95 border-l border-indigo-500"><Globe size={18} /> Publish</button>
 
           {/* Test Mode Selector */}
           <div className="relative">

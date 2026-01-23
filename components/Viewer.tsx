@@ -13,6 +13,7 @@ interface ViewerProps {
   project: ProjectData;
   onExit: () => void;
   testMode?: 'auto' | 'desktop' | 'mobile' | 'vr';
+  isShared?: boolean;
 }
 
 // Virtual Joystick Component for Mobile
@@ -310,7 +311,7 @@ const ViewerLoader = () => {
   );
 };
 
-const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto' }) => {
+const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isShared = false }) => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [completed, setCompleted] = useState(false);
   const [sessionAssets, setSessionAssets] = useState<Asset[]>(project.assets);
@@ -588,12 +589,14 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto' }) =
       {/* Lesson Header */}
       <div className="absolute top-0 left-0 w-full p-6 flex justify-between items-start pointer-events-none">
         <div className="pointer-events-auto">
-          <button
-            onClick={onExit}
-            className="bg-slate-900/80 backdrop-blur border border-slate-700 p-2 rounded-full text-slate-400 hover:text-white transition-colors flex items-center gap-2 pr-4 shadow-xl"
-          >
-            <LogOut size={20} /> <span className="text-xs font-bold uppercase tracking-widest">Exit Preview</span>
-          </button>
+          {!isShared && (
+            <button
+              onClick={onExit}
+              className="bg-slate-900/80 backdrop-blur border border-slate-700 p-2 rounded-full text-slate-400 hover:text-white transition-colors flex items-center gap-2 pr-4 shadow-xl"
+            >
+              <LogOut size={20} /> <span className="text-xs font-bold uppercase tracking-widest">Exit Preview</span>
+            </button>
+          )}
         </div>
 
         {!completed && (

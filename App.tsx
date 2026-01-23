@@ -36,6 +36,7 @@ const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.EDITOR);
   const [project, setProject] = useState<ProjectData>(DEFAULT_PROJECT);
   const [testMode, setTestMode] = useState<'auto' | 'desktop' | 'mobile' | 'vr'>('auto');
+  const [isShared, setIsShared] = useState(false);
 
   const handleSave = (newProject: ProjectData) => {
     setProject(newProject);
@@ -50,6 +51,23 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    // Check for shared project via URL hash
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#project=')) {
+      try {
+        const base64Data = hash.replace('#project=', '');
+        const jsonStr = atob(base64Data);
+        const sharedProject = JSON.parse(jsonStr);
+        setProject(sharedProject);
+        setMode(AppMode.VIEWER); // Enter Viewer mode immediately
+        setIsShared(true);
+        return;
+      } catch (e) {
+        console.error("Failed to parse shared project from URL", e);
+      }
+    }
+
+    // Default to local storage if no hash
     const saved = localStorage.getItem('3d_edtech_project');
     if (saved) {
       try {
@@ -73,8 +91,15 @@ const App: React.FC = () => {
       ) : (
         <Viewer
           project={project}
-          onExit={() => setMode(AppMode.EDITOR)}
+          onExit={() => {
+            if (window.location.hash.startsWith('#project=')) {
+              window.location.hash = '';
+            }
+            setMode(AppMode.EDITOR);
+            setIsShared(false);
+          }}
           testMode={testMode}
+          isShared={isShared}
         />
       )}
     </div>

@@ -1,7 +1,0 @@
-{
-  "name": "3D Ed-Tech Builder",
-  "description": "A powerful 3D educational platform builder for teachers to create interactive step-by-step 3D lessons without coding.",
-  "requestFramePermissions": [
-    "camera"
-  ]
-}
