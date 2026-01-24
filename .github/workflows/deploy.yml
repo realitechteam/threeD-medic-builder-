@@ -25,6 +25,33 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Ensure App Runner service is running
+        run: |
+          STATUS=$(aws apprunner describe-service --service-arn ${{ env.SERVICE_ARN }} --query 'Service.Status' --output text)
+          echo "Current Service Status: $STATUS"
+
+          if [ "$STATUS" = "PAUSED" ]; then
+            echo "⚠️ Service is PAUSED. Attempting to resume..."
+            aws apprunner resume-service --service-arn ${{ env.SERVICE_ARN }}
+            
+            echo "⏳ Waiting for service to resume (this may take a moment)..."
+            # Simple wait loop (max 5 minutes)
+            for i in {1..30}; do
+              sleep 10
+              STATUS=$(aws apprunner describe-service --service-arn ${{ env.SERVICE_ARN }} --query 'Service.Status' --output text)
+              echo "Status: $STATUS"
+              if [ "$STATUS" = "RUNNING" ]; then 
+                echo "✅ Service is now RUNNING."
+                break
+              fi
+            done
+          fi
+
+          if [ "$STATUS" != "RUNNING" ]; then
+            echo "❌ Service must be in RUNNING state to deploy. Current state: $STATUS"
+            exit 1
+          fi
+
       - name: Trigger App Runner deployment
         run: |
           echo "🚀 Triggering App Runner deployment..."
