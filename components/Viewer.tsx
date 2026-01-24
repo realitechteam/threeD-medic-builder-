@@ -192,7 +192,7 @@ const Player = ({ initialPos, joystickInput, lookInput, collidableAssets, isMobi
   useFrame((state, delta) => {
     if (isPresenting) return; // XR handles its own camera
 
-    const speed = 5;
+    const speed = isMobile ? 2.5 : 5;
     const friction = 10;
     const playerRadius = 0.5;
     const lookSpeed = 2.5;
