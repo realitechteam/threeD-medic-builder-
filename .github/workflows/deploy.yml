@@ -1,4 +1,4 @@
-name: Deploy to AWS App Runner
+name: Build and Deploy to AWS App Runner
 
 on:
   push:
@@ -8,10 +8,11 @@ on:
 
 env:
   AWS_REGION: ap-southeast-2
+  ECR_REPOSITORY: threed-medic-builder
   SERVICE_ARN: arn:aws:apprunner:ap-southeast-2:463609501908:service/threed-medic-builder/4014dfc4a050492ca8dd1b979f21afa2
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     
     steps:
@@ -25,40 +26,31 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Ensure App Runner service is running
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          STATUS=$(aws apprunner describe-service --service-arn ${{ env.SERVICE_ARN }} --query 'Service.Status' --output text)
-          echo "Current Service Status: $STATUS"
-
-          if [ "$STATUS" = "PAUSED" ]; then
-            echo "⚠️ Service is PAUSED. Attempting to resume..."
-            aws apprunner resume-service --service-arn ${{ env.SERVICE_ARN }}
-            
-            echo "⏳ Waiting for service to resume (this may take a moment)..."
-            # Simple wait loop (max 5 minutes)
-            for i in {1..30}; do
-              sleep 10
-              STATUS=$(aws apprunner describe-service --service-arn ${{ env.SERVICE_ARN }} --query 'Service.Status' --output text)
-              echo "Status: $STATUS"
-              if [ "$STATUS" = "RUNNING" ]; then 
-                echo "✅ Service is now RUNNING."
-                break
-              fi
-            done
-          fi
-
-          if [ "$STATUS" != "RUNNING" ]; then
-            echo "❌ Service must be in RUNNING state to deploy. Current state: $STATUS"
-            exit 1
-          fi
+          echo "🔨 Building Docker image..."
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          
+          echo "📤 Pushing image to ECR..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          
+          echo "✅ Image pushed: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
 
       - name: Trigger App Runner deployment
         run: |
           echo "🚀 Triggering App Runner deployment..."
           aws apprunner start-deployment --service-arn ${{ env.SERVICE_ARN }}
-          echo "✅ Deployment triggered! App Runner will build and deploy automatically."
+          echo "✅ Deployment triggered!"
 
-      - name: Wait for deployment (optional)
+      - name: Wait for deployment
         run: |
           echo "⏳ Waiting for deployment to complete..."
           aws apprunner wait service-running --service-arn ${{ env.SERVICE_ARN }} || true
