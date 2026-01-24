@@ -1,0 +1,38 @@
+name: Deploy to AWS App Runner
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  AWS_REGION: ap-southeast-2
+  SERVICE_ARN: arn:aws:apprunner:ap-southeast-2:463609501908:service/threed-medic-builder/4014dfc4a050492ca8dd1b979f21afa2
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Trigger App Runner deployment
+        run: |
+          echo "🚀 Triggering App Runner deployment..."
+          aws apprunner start-deployment --service-arn ${{ env.SERVICE_ARN }}
+          echo "✅ Deployment triggered! App Runner will build and deploy automatically."
+
+      - name: Wait for deployment (optional)
+        run: |
+          echo "⏳ Waiting for deployment to complete..."
+          aws apprunner wait service-running --service-arn ${{ env.SERVICE_ARN }} || true
+          echo "✅ Deployment check complete"
