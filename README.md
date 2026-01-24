@@ -25,3 +25,5 @@ npm run build
 ```
 
 The static files will be in the `dist/` folder, ready to deploy to any static hosting service (Vercel, Netlify, GitHub Pages, etc.).
+
+<!-- Last deploy test: 2026-01-24 13:12 -->
