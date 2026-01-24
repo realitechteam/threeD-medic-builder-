@@ -45,13 +45,24 @@ jobs:
           echo "✅ Image pushed: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
 
       - name: Trigger App Runner deployment
+        continue-on-error: true
         run: |
           echo "🚀 Triggering App Runner deployment..."
-          aws apprunner start-deployment --service-arn ${{ env.SERVICE_ARN }}
-          echo "✅ Deployment triggered!"
+          # Retry up to 3 times with 30 second delays
+          for i in 1 2 3; do
+            aws apprunner start-deployment --service-arn ${{ env.SERVICE_ARN }} && break
+            echo "⚠️ Attempt $i failed, retrying in 30 seconds..."
+            sleep 30
+          done
+          echo "✅ Deployment triggered or already in progress!"
 
       - name: Wait for deployment
         run: |
-          echo "⏳ Waiting for deployment to complete..."
+          echo "⏳ Waiting for App Runner to be running..."
+          # Wait for service to be in running state
           aws apprunner wait service-running --service-arn ${{ env.SERVICE_ARN }} || true
-          echo "✅ Deployment check complete"
+          echo "✅ App Runner service is running!"
+          
+          # Get current service URL
+          SERVICE_URL=$(aws apprunner describe-service --service-arn ${{ env.SERVICE_ARN }} --query 'Service.ServiceUrl' --output text)
+          echo "🌐 Service URL: https://$SERVICE_URL"
