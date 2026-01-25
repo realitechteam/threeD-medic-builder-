@@ -106,21 +106,83 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode
     }));
   }, []);
 
-  const addAsset = (type: Asset['type'], subType?: any, position: Vector3Tuple = [0, 0, 0], url?: string) => {
-    const newAsset: Asset = {
-      id: `asset_${Date.now()}`,
-      name: subType === 'custom' ? 'Custom Model' : `New ${subType || type}`,
-      type,
-      geometryType: subType,
-      color: type === 'shape' ? "#3b82f6" : "#ffffff",
-      position,
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      content: type === 'text' ? 'New Text' : undefined,
-      url: url,
-      visible: true
-    };
-    setActiveProject(prev => ({ ...prev, assets: [...prev.assets, newAsset] }));
+  const hasPlayerStart = activeProject.assets.some(a => a.type === 'player_start');
+
+  // Ensure default player spawn exists
+  React.useEffect(() => {
+    if (!hasPlayerStart) {
+      addAsset('player_start', undefined, [0, 0, 0]);
+    }
+  }, []);
+
+  const [showTextModal, setShowTextModal] = useState(false);
+  const [textContent, setTextContent] = useState('');
+  const [textSize, setTextSize] = useState(0.3);
+  const [pendingTextParams, setPendingTextParams] = useState<{ position: Vector3Tuple } | null>(null);
+
+  const addAsset = (type: Asset['type'], subType?: any, position: Vector3Tuple = [0, 0, 0], url?: string, label?: string) => {
+    // UI Feedback check (based on current render state)
+    if (type === 'player_start' && activeProject.assets.some(a => a.type === 'player_start')) {
+      setShowToast(true);
+      setToastMessage("Player Spawn already exists!");
+      setTimeout(() => setShowToast(false), 2000);
+      return;
+    }
+
+    if (type === 'text') {
+      setPendingTextParams({ position });
+      setTextContent('New 3D Label');
+      setTextSize(0.3);
+      setShowTextModal(true);
+      return;
+    }
+
+    createAsset(type, position, subType, url, label);
+  };
+
+  const createAsset = (type: Asset['type'], position: Vector3Tuple, subType?: any, url?: string, label?: string, content?: string, scaleVal: number = 1) => {
+    const newAssetId = `asset_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+
+    setActiveProject(prev => {
+      // Robust check against race conditions
+      if (type === 'player_start' && prev.assets.some(a => a.type === 'player_start')) {
+        return prev;
+      }
+
+      const newAsset: Asset = {
+        id: newAssetId,
+        name: label || (subType === 'custom' ? 'Custom Model' : `New ${subType || type}`),
+        type,
+        geometryType: subType,
+        color: type === 'shape' ? "#3b82f6" : "#ffffff",
+        position,
+        rotation: [0, 0, 0],
+        scale: [scaleVal, scaleVal, scaleVal],
+        content: content,
+        url: url,
+        visible: true,
+        opacity: type === 'shape' ? 0.5 : 1
+      };
+
+      return { ...prev, assets: [...prev.assets, newAsset] };
+    });
+
+    // Automatically select the new asset
+    // We delay slightly to ensure the asset exists in the scene before selection highlights occur, though standard React batching usually handles this fine.
+    // However, if we don't want to select player_start repeatedly if it failed, we should check type. But `player_start` check is inside setActiveProject.
+    // For now, we'll optimistically select it. If it wasn't added due to the check, it might just select nothing or fail gracefully if we tried to find it. 
+    // Actually, simply setting the ID is safe.
+    if (type !== 'player_start' || !hasPlayerStart) {
+      setSelectedAssetId(newAssetId);
+    }
+  };
+
+  const handleConfirmText = () => {
+    if (pendingTextParams) {
+      createAsset('text', pendingTextParams.position, undefined, undefined, '3D Label', textContent, textSize);
+      setShowTextModal(false);
+      setPendingTextParams(null);
+    }
   };
 
   const deleteAsset = (id: string) => {
@@ -205,7 +267,7 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode
 
         <div className="flex-1 overflow-y-auto p-4">
           {activeTab === 'library' && (
-            <Sidebar onAddAsset={addAsset} />
+            <Sidebar onAddAsset={addAsset} hasPlayerStart={hasPlayerStart} />
           )}
           {activeTab === 'steps' && (
             <StepManager
@@ -254,7 +316,7 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode
           selectedAssetId={selectedAssetId}
           onAssetUpdate={updateAsset}
           onSelectAsset={setSelectedAssetId}
-          onDropAsset={(type, subType, pos, url) => addAsset(type as any, subType, pos, url)}
+          onDropAsset={(type, subType, pos, url, label) => addAsset(type as any, subType, pos, url, label)}
         />
 
         <AnimatePresence>
@@ -269,6 +331,62 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode
               <CheckCircle size={20} className="text-white" />
               <span className="font-bold">{toastMessage}</span>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showTextModal && (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setShowTextModal(false)} />
+              <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative bg-slate-900 border border-slate-700 w-full max-w-sm rounded-2xl p-6 shadow-2xl overflow-hidden">
+                <div className="absolute top-0 right-0 p-4">
+                  <button onClick={() => setShowTextModal(false)} className="text-slate-500 hover:text-white transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-3 text-blue-400 mb-2">
+                    <Type size={24} />
+                    <h2 className="text-xl font-bold text-white">Add 3D Label</h2>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Label Text</label>
+                    <input
+                      autoFocus
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={textContent}
+                      onChange={(e) => setTextContent(e.target.value)}
+                      placeholder="Enter text..."
+                      onKeyDown={(e) => e.key === 'Enter' && handleConfirmText()}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Size</label>
+                      <span className="text-xs text-blue-400 font-mono">{textSize.toFixed(1)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="2"
+                      step="0.1"
+                      className="w-full"
+                      value={textSize}
+                      onChange={(e) => setTextSize(parseFloat(e.target.value))}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleConfirmText}
+                    className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 size={18} /> Add Label
+                  </button>
+                </div>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
 

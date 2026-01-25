@@ -5,7 +5,10 @@ import { ProjectData, Step, Asset, Vector3Tuple } from '../types';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { PointerLockControls, Environment, Text, ContactShadows, Float, useGLTF, Html, useProgress } from '@react-three/drei';
 import { XR, VRButton, useXR, Controllers } from '@react-three/xr';
-import { ChevronRight, ChevronLeft, LogOut, Info, CheckCircle2, Loader2, Anchor, Sparkles, Move, MousePointer, Smartphone, Monitor } from 'lucide-react';
+import { ChevronRight, ChevronLeft, LogOut, Info, CheckCircle2, Loader2, Anchor, Sparkles, Move, MousePointer, Smartphone, Monitor, RefreshCcw } from 'lucide-react';
+// ... (skip down to Viewer component)
+
+
 import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
 
@@ -475,6 +478,12 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
     setSessionAssets(prev => prev.map(a => a.id === id ? { ...a, position: [pos.x, pos.y, pos.z] } : a));
   };
 
+  const handleRestart = () => {
+    setCompleted(false);
+    setCurrentStepIndex(0);
+    setSessionAssets(project.assets); // Reset asset positions
+  };
+
   return (
     <div className="relative w-full h-full bg-slate-950">
       <VRButton />
@@ -620,60 +629,83 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="absolute bottom-10 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 pointer-events-none"
+            className={`absolute px-4 pointer-events-none w-full ${currentStepIndex === 0 ? 'inset-0 flex items-center justify-center z-50 bg-slate-950/60 backdrop-blur-sm' : 'bottom-10 left-1/2 -translate-x-1/2 max-w-xl'}`}
           >
-            <div className={`bg-slate-900/90 backdrop-blur-xl border ${isSnapped ? 'border-green-500 shadow-green-500/20' : 'border-slate-700 shadow-2xl'} rounded-3xl p-8 transition-colors pointer-events-auto`}>
-              <div className="flex items-start gap-4">
-                <div className={`${isSnapped ? 'bg-green-600/20 text-green-400' : 'bg-blue-600/20 text-blue-400'} p-3 rounded-2xl shrink-0 transition-colors`}>
-                  {isSnapped ? <CheckCircle2 size={24} /> : currentStep.targetAction === 'move' ? <Move size={24} className="animate-pulse" /> : <Info size={24} />}
-                </div>
-                <div className="flex-1 space-y-2">
-                  <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                    {currentStep.title}
-                    {currentStep.targetAction === 'move' && <span className="text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter font-black">Hold to Move</span>}
-                  </h2>
-                  <p className="text-slate-300 leading-relaxed text-sm">{currentStep.instruction}</p>
-                </div>
-              </div>
+            <div className={`pointer-events-auto transition-colors ${currentStepIndex === 0 ? 'bg-slate-900 border border-slate-700 shadow-2xl rounded-[2.5rem] p-12 max-w-2xl w-full text-center' : `bg-slate-900/90 backdrop-blur-xl border ${isSnapped ? 'border-green-500 shadow-green-500/20' : 'border-slate-700 shadow-2xl'} rounded-3xl p-8`}`}>
 
-              <div className="mt-8 flex justify-between items-center">
-                <button
-                  disabled={currentStepIndex === 0 || isSnapped}
-                  onClick={() => setCurrentStepIndex(prev => prev - 1)}
-                  className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors disabled:opacity-30"
-                >
-                  <ChevronLeft size={20} /> Back
-                </button>
-
-                {currentStep.targetAction === 'none' && !isSnapped && (
+              {currentStepIndex === 0 ? (
+                // Centered Introduction Step UI
+                <div className="flex flex-col items-center gap-8">
+                  <div className="w-24 h-24 bg-blue-600/20 rounded-full flex items-center justify-center text-blue-400 mb-2 ring-1 ring-blue-500/50">
+                    <Info size={48} />
+                  </div>
+                  <div className="space-y-4">
+                    <h1 className="text-4xl font-bold text-white tracking-tight">{currentStep.title}</h1>
+                    <p className="text-slate-300 text-lg leading-relaxed max-w-lg mx-auto whitespace-pre-line">{currentStep.instruction}</p>
+                  </div>
                   <button
                     onClick={handleNext}
-                    className="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-2xl flex items-center gap-2 font-bold text-white shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+                    className="mt-4 bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-500/25 transition-all hover:scale-105 active:scale-95 flex items-center gap-3"
                   >
-                    Next <ChevronRight size={20} />
+                    Start Lesson <ChevronRight size={24} />
                   </button>
-                )}
-
-                {currentStep.targetAction === 'click' && (
-                  <div className="flex items-center gap-2 text-blue-400 text-[10px] font-black uppercase tracking-widest animate-pulse">
-                    Look at target and click
-                  </div>
-                )}
-
-                {currentStep.targetAction === 'move' && !isSnapped && (
-                  <div className="flex flex-col items-end">
-                    <div className="flex items-center gap-2 text-blue-400 text-[10px] font-black uppercase tracking-widest animate-bounce">
-                      {isHolding ? 'Bring it to the destination' : 'Click to grab the blue object'}
+                </div>
+              ) : (
+                // Standard Step UI (Bottom)
+                <>
+                  <div className="flex items-start gap-4">
+                    <div className={`${isSnapped ? 'bg-green-600/20 text-green-400' : 'bg-blue-600/20 text-blue-400'} p-3 rounded-2xl shrink-0 transition-colors`}>
+                      {isSnapped ? <CheckCircle2 size={24} /> : currentStep.targetAction === 'move' ? <Move size={24} className="animate-pulse" /> : <Info size={24} />}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                        {currentStep.title}
+                        {currentStep.targetAction === 'move' && <span className="text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter font-black">Hold to Move</span>}
+                      </h2>
+                      <p className="text-slate-300 leading-relaxed text-sm whitespace-pre-line">{currentStep.instruction}</p>
                     </div>
                   </div>
-                )}
 
-                {isSnapped && (
-                  <div className="text-green-400 text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                    <Sparkles size={16} /> PERFECT!
+                  <div className="mt-8 flex justify-between items-center">
+                    <button
+                      disabled={currentStepIndex === 0 || isSnapped}
+                      onClick={() => setCurrentStepIndex(prev => prev - 1)}
+                      className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors disabled:opacity-30"
+                    >
+                      <ChevronLeft size={20} /> Back
+                    </button>
+
+                    {currentStep.targetAction === 'none' && !isSnapped && (
+                      <button
+                        onClick={handleNext}
+                        className="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-2xl flex items-center gap-2 font-bold text-white shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+                      >
+                        Next <ChevronRight size={20} />
+                      </button>
+                    )}
+
+                    {currentStep.targetAction === 'click' && (
+                      <div className="flex items-center gap-2 text-blue-400 text-[10px] font-black uppercase tracking-widest animate-pulse">
+                        Look at target and click
+                      </div>
+                    )}
+
+                    {currentStep.targetAction === 'move' && !isSnapped && (
+                      <div className="flex flex-col items-end">
+                        <div className="flex items-center gap-2 text-blue-400 text-[10px] font-black uppercase tracking-widest animate-bounce">
+                          {isHolding ? 'Bring it to the destination' : 'Click to grab the blue object'}
+                        </div>
+                      </div>
+                    )}
+
+                    {isSnapped && (
+                      <div className="text-green-400 text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                        <Sparkles size={16} /> PERFECT!
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
           </motion.div>
         ) : completed && (
@@ -690,12 +722,34 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
               <p className="text-slate-400 mb-10 leading-relaxed text-lg">
                 You've completed the interactive 3D lesson: <strong>{project.projectName}</strong>.
               </p>
-              <button
-                onClick={onExit}
-                className="w-full bg-slate-100 hover:bg-white text-slate-950 font-bold py-4 rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-xl"
-              >
-                Return to Editor
-              </button>
+
+              <div className="space-y-3">
+                <button
+                  onClick={handleRestart}
+                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-xl flex items-center justify-center gap-2"
+                >
+                  <RefreshCcw size={20} /> Try Again
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCompleted(false);
+                    setCurrentStepIndex(project.steps.length);
+                  }}
+                  className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-4 rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-xl"
+                >
+                  Close
+                </button>
+
+                {!isShared && (
+                  <button
+                    onClick={onExit}
+                    className="w-full bg-slate-800/50 hover:bg-slate-800 text-slate-400 font-bold py-4 rounded-2xl transition-all hover:scale-105 active:scale-95"
+                  >
+                    Return to Editor
+                  </button>
+                )}
+              </div>
             </div>
           </motion.div>
         )}

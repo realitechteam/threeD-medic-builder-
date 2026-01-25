@@ -48,6 +48,91 @@
             "label": "Medical Processor",
             "icon": "Box",
             "url": "/models/Facility/Medical_processor_2.glb"
+        },
+        {
+            "label": "Dental Chair",
+            "icon": "Box",
+            "url": "/models/Facility/DentalChair.glb"
+        },
+        {
+            "label": "Heart Scanner",
+            "icon": "Box",
+            "url": "/models/Facility/HeartScanner.glb"
+        },
+        {
+            "label": "Machine",
+            "icon": "Box",
+            "url": "/models/Facility/Machine.glb"
+        },
+        {
+            "label": "Machine A",
+            "icon": "Box",
+            "url": "/models/Facility/MachineA.glb"
+        },
+        {
+            "label": "Machine B",
+            "icon": "Box",
+            "url": "/models/Facility/MachineB.glb"
+        },
+        {
+            "label": "Medicine",
+            "icon": "Box",
+            "url": "/models/Facility/Medicine.glb"
+        },
+        {
+            "label": "Medicine Bottle A",
+            "icon": "Box",
+            "url": "/models/Facility/MedicineBottleA.glb"
+        },
+        {
+            "label": "Medicine Bottle B",
+            "icon": "Box",
+            "url": "/models/Facility/MedicineBottleB.glb"
+        },
+        {
+            "label": "Medicine Box A",
+            "icon": "Box",
+            "url": "/models/Facility/MedicineBoxA.glb"
+        },
+        {
+            "label": "Medicine Box B",
+            "icon": "Box",
+            "url": "/models/Facility/MedicineBoxB.glb"
+        },
+        {
+            "label": "Medicine Shelf",
+            "icon": "Box",
+            "url": "/models/Facility/MedicineShelf.glb"
+        },
+        {
+            "label": "Surgery Equipment 1",
+            "icon": "Box",
+            "url": "/models/Facility/Surgery_Equipmet1.glb"
+        },
+        {
+            "label": "Surgery Equipment 2",
+            "icon": "Box",
+            "url": "/models/Facility/Surgery_Equipmet2.glb"
+        },
+        {
+            "label": "Surgery Equipment 3",
+            "icon": "Box",
+            "url": "/models/Facility/Surgery_Equipmet3.glb"
+        },
+        {
+            "label": "Surgery Equipment Trolly",
+            "icon": "Box",
+            "url": "/models/Facility/Surgery_Equipmet_trolly.glb"
+        },
+        {
+            "label": "Trolly Droor",
+            "icon": "Box",
+            "url": "/models/Facility/Trolly Droor.glb"
+        },
+        {
+            "label": "Ventilator",
+            "icon": "Box",
+            "url": "/models/Facility/Vantilator.glb"
         }
     ],
     "roomModels": [

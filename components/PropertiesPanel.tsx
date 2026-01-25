@@ -77,6 +77,24 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ asset, onChange, onDe
         </div>
       </div>
 
+      {(asset.type === 'shape' || asset.opacity !== undefined) && (
+        <div className="space-y-2">
+          <div className="flex justify-between">
+            <label className="text-[10px] uppercase font-bold text-slate-500">Opacity</label>
+            <span className="text-[9px] text-blue-400 font-mono">{(asset.opacity ?? 0.5).toFixed(2)}</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            className="w-full"
+            value={asset.opacity ?? 0.5}
+            onChange={(e) => onChange({ opacity: parseFloat(e.target.value) })}
+          />
+        </div>
+      )}
+
       {(['position', 'rotation', 'scale'] as const).map(prop => (
         <div key={prop} className="space-y-2">
           <label className="text-[10px] uppercase font-bold text-slate-500">{prop}</label>
@@ -87,7 +105,8 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ asset, onChange, onDe
                 <input
                   type="number"
                   step="0.1"
-                  className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-center focus:ring-1 focus:ring-blue-500"
+                  disabled={prop === 'scale' && asset.type !== 'shape' && asset.type !== 'text'}
+                  className={`w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-center focus:ring-1 focus:ring-blue-500 ${(prop === 'scale' && asset.type !== 'shape' && asset.type !== 'text') ? 'opacity-50 cursor-not-allowed' : ''}`}
                   value={Number(asset[prop][i]).toFixed(2)}
                   onChange={(e) => handleVectorChange(prop, i, e.target.value)}
                 />

@@ -24,7 +24,7 @@ const DEFAULT_PROJECT: ProjectData = {
     {
       id: "step_01",
       title: "Introduction",
-      instruction: "Welcome to the 3D Heart Anatomy lesson. Click on the heart to begin exploration.",
+      instruction: "Welcome to the 3D Heart Anatomy lesson.\nAre you ready to start?",
       cameraPosition: [5, 5, 5],
       targetAction: 'click',
       targetAssetId: "obj_01"

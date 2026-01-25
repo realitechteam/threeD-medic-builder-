@@ -12,7 +12,7 @@ interface ViewportProps {
   selectedAssetId: string | null;
   onAssetUpdate: (id: string, updates: Partial<Asset>) => void;
   onSelectAsset: (id: string | null) => void;
-  onDropAsset: (type: string, subType: string | null, position: Vector3Tuple, url?: string) => void;
+  onDropAsset: (type: string, subType: string | null, position: Vector3Tuple, url?: string, label?: string) => void;
 }
 
 const CustomModel: React.FC<{
@@ -21,8 +21,19 @@ const CustomModel: React.FC<{
   onClick: (e: any) => void;
   onRef: (el: THREE.Object3D) => void
 }> = ({ asset, onPointerDown, onClick, onRef }) => {
-  const { scene } = useGLTF(asset.url);
+  const { scene } = useGLTF(asset.url!);
   const clonedScene = useMemo(() => scene.clone(), [scene]);
+
+  useEffect(() => {
+    clonedScene.traverse((child: any) => {
+      if (child.isMesh) {
+        child.material = child.material.clone();
+        child.material.transparent = true;
+        child.material.opacity = asset.opacity ?? 1;
+        child.material.needsUpdate = true;
+      }
+    });
+  }, [clonedScene, asset.opacity]);
 
   return (
     <primitive
@@ -95,7 +106,8 @@ const LoaderUI = () => {
 };
 
 const SceneContent: React.FC<ViewportProps> = ({ assets, selectedAssetId, onAssetUpdate, onSelectAsset }) => {
-  const { scene } = useThree();
+  const { scene, camera } = useThree();
+  const controlsRef = useRef<any>(null);
   const [transformMode, setTransformMode] = useState<'translate' | 'rotate' | 'scale'>('translate');
   const [isDraggingGizmo, setIsDraggingGizmo] = useState(false);
   const meshRefs = useRef<{ [key: string]: THREE.Object3D }>({});
@@ -108,12 +120,56 @@ const SceneContent: React.FC<ViewportProps> = ({ assets, selectedAssetId, onAsse
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === 'w') setTransformMode('translate');
       if (e.key === 'e') setTransformMode('rotate');
-      if (e.key === 'r') setTransformMode('scale');
+      if (e.key === 'r') {
+        const current = assets.find(a => a.id === selectedAssetId);
+        if (current && (current.type === 'shape' || current.type === 'text')) {
+          setTransformMode('scale');
+        }
+      }
       if (e.key === 'Escape') onSelectAsset(null);
+      if (e.key === 'f' || e.key === 'F') {
+        if (selectedAssetId && meshRefs.current[selectedAssetId]) {
+          const selectedObj = meshRefs.current[selectedAssetId];
+
+          // Calculate bounding box to determine size and center
+          const box = new THREE.Box3().setFromObject(selectedObj);
+          const center = box.getCenter(new THREE.Vector3());
+          const size = box.getSize(new THREE.Vector3());
+
+          // Determine ideal distance based on object size
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const fov = (camera as THREE.PerspectiveCamera).fov * (Math.PI / 180);
+          let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+
+          // Add some padding (margin)
+          cameraZ *= 2.5;
+
+          // Apply new camera position relative to the object
+          // We keep the current direction but adjust distance
+          const direction = new THREE.Vector3().subVectors(camera.position, center).normalize();
+          const newPos = center.clone().add(direction.multiplyScalar(cameraZ));
+
+          camera.position.copy(newPos);
+
+          // Update OrbitControls target to focus on the object
+          if (controlsRef.current) {
+            controlsRef.current.target.copy(center);
+            controlsRef.current.update();
+          }
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onSelectAsset]);
+  }, [selectedAssetId, camera, onSelectAsset, assets]);
+
+  // Reset transform mode if switching to an asset that doesn't support scaling
+  useEffect(() => {
+    const current = assets.find(a => a.id === selectedAssetId);
+    if (current && transformMode === 'scale' && current.type !== 'shape' && current.type !== 'text') {
+      setTransformMode('translate');
+    }
+  }, [selectedAssetId, assets, transformMode]);
 
   // Hàm xử lý việc xác định xem có nên thực hiện Select hay không
   const handleInteraction = (assetId: string, event: any) => {
@@ -136,12 +192,39 @@ const SceneContent: React.FC<ViewportProps> = ({ assets, selectedAssetId, onAsse
   };
 
   // Hide Gizmo if selected asset is hidden
+  // Gizmo State
+  const [gizmoTarget, setGizmoTarget] = useState<THREE.Object3D | null>(null);
+
+  // Update Gizmo target when selection changes (fallback for existing objects)
+  useEffect(() => {
+    if (selectedAssetId && meshRefs.current[selectedAssetId]) {
+      setGizmoTarget(meshRefs.current[selectedAssetId]);
+    } else {
+      setGizmoTarget(null);
+    }
+  }, [selectedAssetId, assets]);
+
+  // Handle ref assignment - ensures Gizmo shows up for newly mounted objects (e.g. after Suspense)
+  const handleRef = React.useCallback((id: string, el: THREE.Object3D | null) => {
+    if (el) {
+      meshRefs.current[id] = el;
+      if (id === selectedAssetId) {
+        setGizmoTarget(el);
+      }
+    }
+  }, [selectedAssetId]);
+
   const selectedAsset = assets.find(a => a.id === selectedAssetId);
-  const showGizmo = selectedAssetId && meshRefs.current[selectedAssetId] && selectedAsset?.visible !== false;
+  // Show gizmo if we have a target and the asset isn't hidden
+  const showGizmo = gizmoTarget && selectedAsset?.visible !== false;
 
   return (
     <>
-      <OrbitControls makeDefault enabled={!isDraggingGizmo} />
+      <OrbitControls
+        ref={controlsRef}
+        makeDefault
+        enabled={!isDraggingGizmo}
+      />
 
       <Environment preset="city" />
       <ambientLight intensity={0.5} />
@@ -153,7 +236,7 @@ const SceneContent: React.FC<ViewportProps> = ({ assets, selectedAssetId, onAsse
           <React.Fragment key={asset.id}>
             {asset.type === 'shape' && (
               <mesh
-                ref={(el) => { if (el) meshRefs.current[asset.id] = el; }}
+                ref={(el) => handleRef(asset.id, el)}
                 position={asset.position}
                 rotation={asset.rotation}
                 scale={asset.scale}
@@ -170,13 +253,19 @@ const SceneContent: React.FC<ViewportProps> = ({ assets, selectedAssetId, onAsse
                 {asset.geometryType === 'sphere' && <sphereGeometry args={[0.7, 32, 32]} />}
                 {asset.geometryType === 'cone' && <coneGeometry args={[0.7, 1.5, 32]} />}
                 {asset.geometryType === 'torus' && <torusGeometry args={[0.5, 0.2, 16, 100]} />}
-                <meshStandardMaterial color={asset.color} roughness={0.3} metalness={0.2} />
+                <meshStandardMaterial
+                  color={asset.color}
+                  roughness={0.3}
+                  metalness={0.2}
+                  transparent={true}
+                  opacity={asset.opacity ?? 0.5}
+                />
               </mesh>
             )}
 
             {asset.type === 'text' && (
               <Text
-                ref={(el) => { if (el) meshRefs.current[asset.id] = el; }}
+                ref={(el) => handleRef(asset.id, el)}
                 position={asset.position}
                 rotation={asset.rotation}
                 scale={asset.scale}
@@ -200,7 +289,7 @@ const SceneContent: React.FC<ViewportProps> = ({ assets, selectedAssetId, onAsse
             {asset.type === 'model' && asset.url && (
               <CustomModel
                 asset={asset}
-                onRef={(el) => { if (el) meshRefs.current[asset.id] = el; }}
+                onRef={(el) => handleRef(asset.id, el)}
                 onPointerDown={onPointerDown}
                 onClick={(e) => {
                   if (!asset.locked) {
@@ -214,7 +303,7 @@ const SceneContent: React.FC<ViewportProps> = ({ assets, selectedAssetId, onAsse
             {asset.type === 'player_start' && (
               <PlayerStartMesh
                 asset={asset}
-                onRef={(el) => { if (el) meshRefs.current[asset.id] = el; }}
+                onRef={(el) => handleRef(asset.id, el)}
                 onPointerDown={onPointerDown}
                 onClick={(e) => {
                   if (!asset.locked) {
@@ -230,7 +319,7 @@ const SceneContent: React.FC<ViewportProps> = ({ assets, selectedAssetId, onAsse
 
       {showGizmo && (
         <TransformControls
-          object={meshRefs.current[selectedAssetId]}
+          object={gizmoTarget}
           mode={transformMode}
           onMouseDown={() => setIsDraggingGizmo(true)}
           onMouseUp={() => {
@@ -271,6 +360,7 @@ const Viewport: React.FC<ViewportProps> = (props) => {
         const assetType = e.dataTransfer.getData('assetType');
         const subType = e.dataTransfer.getData('subType');
         const assetUrl = e.dataTransfer.getData('assetUrl');
+        const assetLabel = e.dataTransfer.getData('assetLabel');
 
         if (assetType) {
           window.dispatchEvent(new CustomEvent('asset-dropped', {
@@ -278,6 +368,7 @@ const Viewport: React.FC<ViewportProps> = (props) => {
               type: assetType,
               subType,
               url: assetUrl,
+              label: assetLabel,
               clientX: e.clientX,
               clientY: e.clientY
             }
@@ -304,10 +395,16 @@ const Viewport: React.FC<ViewportProps> = (props) => {
             <span className="flex items-center gap-2"> <kbd className="bg-slate-700 px-2 py-0.5 rounded text-white">E</kbd> <span className="text-[10px] uppercase font-bold text-slate-500">Rotate</span> </span>
           </div>
           <div className="w-px h-4 bg-slate-800" />
-          <div className="flex flex-col items-center gap-1">
-            <span className="flex items-center gap-2"> <kbd className="bg-slate-700 px-2 py-0.5 rounded text-white">R</kbd> <span className="text-[10px] uppercase font-bold text-slate-500">Scale</span> </span>
-          </div>
-          <div className="w-px h-4 bg-slate-800" />
+
+          {(props.assets.find(a => a.id === props.selectedAssetId)?.type === 'shape' || props.assets.find(a => a.id === props.selectedAssetId)?.type === 'text') && (
+            <>
+              <div className="flex flex-col items-center gap-1">
+                <span className="flex items-center gap-2"> <kbd className="bg-slate-700 px-2 py-0.5 rounded text-white">R</kbd> <span className="text-[10px] uppercase font-bold text-slate-500">Scale</span> </span>
+              </div>
+              <div className="w-px h-4 bg-slate-800" />
+            </>
+          )}
+
           <button
             onClick={() => props.onSelectAsset(null)}
             className="text-red-400 hover:text-red-300 font-bold uppercase text-[10px] tracking-widest ml-2"
@@ -328,12 +425,12 @@ const Viewport: React.FC<ViewportProps> = (props) => {
   );
 };
 
-const DropHandler = ({ onDrop }: { onDrop: (type: string, subType: string | null, pos: Vector3Tuple, url?: string) => void }) => {
+const DropHandler = ({ onDrop }: { onDrop: (type: string, subType: string | null, pos: Vector3Tuple, url?: string, label?: string) => void }) => {
   const { camera, gl } = useThree();
 
   useEffect(() => {
     const handleDropped = (e: any) => {
-      const { type, subType, url, clientX, clientY } = e.detail;
+      const { type, subType, url, label, clientX, clientY } = e.detail;
       const rect = gl.domElement.getBoundingClientRect();
 
       const mouse = new THREE.Vector2();
@@ -347,9 +444,9 @@ const DropHandler = ({ onDrop }: { onDrop: (type: string, subType: string | null
       const targetPos = new THREE.Vector3();
 
       if (raycaster.ray.intersectPlane(plane, targetPos)) {
-        onDrop(type, subType, [targetPos.x, targetPos.y, targetPos.z], url);
+        onDrop(type, subType, [targetPos.x, targetPos.y, targetPos.z], url, label);
       } else {
-        onDrop(type, subType, [0, 0, 0], url);
+        onDrop(type, subType, [0, 0, 0], url, label);
       }
     };
 

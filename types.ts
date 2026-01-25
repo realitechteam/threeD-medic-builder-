@@ -15,6 +15,7 @@ export interface Asset {
   visible?: boolean;
   locked?: boolean;
   isCollidable?: boolean;
+  opacity?: number;
 }
 
 export interface Step {
