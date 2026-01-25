@@ -382,6 +382,7 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode
           <PropertiesPanel
             asset={selectedAsset}
             onChange={(updates) => updateAsset(selectedAsset.id, updates)}
+            onDelete={() => deleteAsset(selectedAsset.id)}
           />
         ) : (
           <div className="p-8 text-center text-slate-500 flex flex-col items-center gap-4">

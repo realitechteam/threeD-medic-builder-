@@ -1,14 +1,15 @@
 
 import React from 'react';
 import { Asset, Vector3Tuple } from '../types';
-import { Eye, EyeOff, Shield, ShieldOff } from 'lucide-react';
+import { Eye, EyeOff, Shield, ShieldOff, Trash2 } from 'lucide-react';
 
 interface PropertiesPanelProps {
   asset: Asset;
   onChange: (updates: Partial<Asset>) => void;
+  onDelete: () => void;
 }
 
-const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ asset, onChange }) => {
+const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ asset, onChange, onDelete }) => {
   const handleVectorChange = (key: 'position' | 'rotation' | 'scale', axis: number, value: string) => {
     const newVal = parseFloat(value);
     if (isNaN(newVal)) return;
@@ -95,6 +96,16 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ asset, onChange }) =>
           </div>
         </div>
       ))}
+
+      <div className="pt-4 border-t border-slate-800">
+        <button
+          onClick={onDelete}
+          className="w-full flex items-center justify-center gap-2 p-3 bg-red-600/10 hover:bg-red-600/20 text-red-500 rounded-xl transition-all border border-red-500/20 hover:border-red-500/50"
+        >
+          <Trash2 size={16} />
+          <span className="text-sm font-bold">Delete Object</span>
+        </button>
+      </div>
     </div>
   );
 };
