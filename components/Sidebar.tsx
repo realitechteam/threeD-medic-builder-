@@ -104,7 +104,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddAsset, hasPlayerStart = false })
         <button
           draggable={!hasPlayerStart}
           onDragStart={(e) => handleDragStart(e, 'player_start')}
-          onClick={() => !hasPlayerStart && onAddAsset('player_start')}
+
           disabled={hasPlayerStart}
           className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all group ${hasPlayerStart
             ? 'bg-slate-800/50 border border-slate-700/50 cursor-not-allowed opacity-50'
@@ -136,7 +136,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddAsset, hasPlayerStart = false })
               key={shape.label}
               draggable
               onDragStart={(e) => handleDragStart(e, 'shape', shape.subType)}
-              onClick={() => onAddAsset('shape', shape.subType)}
+
               className="flex flex-col items-center justify-center p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all hover:scale-105 active:scale-95 group cursor-grab active:cursor-grabbing"
             >
               <div className="text-blue-400 mb-2 group-hover:scale-110 transition-transform pointer-events-none">{shape.icon}</div>
@@ -157,7 +157,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddAsset, hasPlayerStart = false })
               key={model.label}
               draggable
               onDragStart={(e) => handleDragStart(e, 'model', 'human', model.url, model.label)}
-              onClick={() => onAddAsset('model', 'human', [0, 0, 0], model.url)}
+
               className="flex flex-col items-center justify-center p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all hover:scale-105 active:scale-95 group cursor-grab active:cursor-grabbing"
             >
               <div className="text-blue-400 mb-2 group-hover:scale-110 transition-transform pointer-events-none">{model.icon}</div>
@@ -186,7 +186,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddAsset, hasPlayerStart = false })
                 key={model.label}
                 draggable
                 onDragStart={(e) => handleDragStart(e, 'model', 'facility', model.url, model.label)}
-                onClick={() => onAddAsset('model', 'facility', [0, 0, 0], model.url)}
+
                 className="flex flex-col items-center justify-center p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all hover:scale-105 active:scale-95 group cursor-grab active:cursor-grabbing"
               >
                 <div className="text-green-400 mb-2 group-hover:scale-110 transition-transform pointer-events-none">{model.icon}</div>
@@ -216,7 +216,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddAsset, hasPlayerStart = false })
                 key={model.label}
                 draggable
                 onDragStart={(e) => handleDragStart(e, 'model', 'room', model.url, model.label)}
-                onClick={() => onAddAsset('model', 'room', [0, 0, 0], model.url)}
+
                 className="flex flex-col items-center justify-center p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all hover:scale-105 active:scale-95 group cursor-grab active:cursor-grabbing"
               >
                 <div className="text-purple-400 mb-2 group-hover:scale-110 transition-transform pointer-events-none">{model.icon}</div>
@@ -232,7 +232,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddAsset, hasPlayerStart = false })
         <button
           draggable
           onDragStart={(e) => handleDragStart(e, 'text')}
-          onClick={() => onAddAsset('text')}
+
           className="w-full flex items-center gap-4 p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all group cursor-grab active:cursor-grabbing"
         >
           <div className="bg-blue-500/10 p-2 rounded-lg text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-colors pointer-events-none">

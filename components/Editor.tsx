@@ -141,6 +141,26 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode
   };
 
   const createAsset = (type: Asset['type'], position: Vector3Tuple, subType?: any, url?: string, label?: string, content?: string, scaleVal: number = 1) => {
+    // Check if we are updating the room environment (Singleton pattern for Room)
+    if (subType === 'room') {
+      let existingRoom = activeProject.assets.find(a => a.geometryType === 'room');
+
+      // Fallback: Check if there's a default "Environment" asset (legacy data)
+      if (!existingRoom) {
+        existingRoom = activeProject.assets.find(a => a.name === 'Environment' && a.type === 'model');
+      }
+
+      if (existingRoom) {
+        updateAsset(existingRoom.id, {
+          url,
+          name: label || existingRoom.name,
+          geometryType: 'room' // Ensure it's tagged correctly now
+        });
+        setSelectedAssetId(existingRoom.id);
+        return;
+      }
+    }
+
     const newAssetId = `asset_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
 
     setActiveProject(prev => {

@@ -6,7 +6,7 @@ export interface Asset {
   name: string;
   type: 'model' | 'text' | 'shape' | 'player_start';
   content?: string; // For text type
-  geometryType?: 'box' | 'sphere' | 'cone' | 'torus'; // For shape type
+  geometryType?: 'box' | 'sphere' | 'cone' | 'torus' | 'human' | 'facility' | 'room' | 'custom' | string; // For shape type and model subtypes
   color: string;
   position: Vector3Tuple;
   rotation: Vector3Tuple;

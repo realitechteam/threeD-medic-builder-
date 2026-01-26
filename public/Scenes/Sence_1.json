@@ -5,6 +5,7 @@
       "id": "default_env_01",
       "name": "Environment",
       "type": "model",
+      "geometryType": "room",
       "url": "/models/rooms/mainHospital.glb",
       "color": "#ffffff",
       "position": [
