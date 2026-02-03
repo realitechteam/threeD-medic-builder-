@@ -610,11 +610,13 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
 
         {!completed && (
           <div className="bg-slate-900/80 backdrop-blur border border-slate-700 px-4 py-2 rounded-full text-white text-sm font-medium flex items-center gap-3 shadow-xl pointer-events-auto">
-            <span className="text-blue-400 font-bold">{currentStepIndex + 1} / {project.steps.length}</span>
+            <span className="text-blue-400 font-bold">
+              {currentStepIndex === 0 ? 'Intro' : `${currentStepIndex - 1} / ${project.steps.length - 1}`}
+            </span>
             <div className="w-32 h-1 bg-slate-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-500 transition-all duration-500"
-                style={{ width: `${((currentStepIndex + 1) / project.steps.length) * 100}%` }}
+                style={{ width: `${currentStepIndex === 0 ? 0 : (currentStepIndex - 1 / (project.steps.length - 1)) * 100}%` }}
               />
             </div>
           </div>
