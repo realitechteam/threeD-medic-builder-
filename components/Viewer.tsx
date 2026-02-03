@@ -333,22 +333,7 @@ const GhostHint: React.FC<{
 
   return (
     <group position={targetPos} rotation={targetAsset.rotation} scale={targetAsset.scale}>
-      {/* Pulse Effect */}
-      <mesh>
-        {targetAsset.geometryType === 'box' && <boxGeometry args={[0.2, 0.2, 0.2]} />}
-        {targetAsset.geometryType === 'sphere' && <sphereGeometry args={[0.14, 32, 32]} />}
-        {targetAsset.geometryType === 'cone' && <coneGeometry args={[0.14, 0.3, 32]} />}
-        {targetAsset.geometryType === 'torus' && <torusGeometry args={[0.1, 0.04, 16, 100]} />}
-        <meshStandardMaterial
-          color={targetAsset.color}
-          transparent
-          opacity={0.3}
-          emissive={targetAsset.color}
-          emissiveIntensity={0.5}
-          wireframe
-        />
-      </mesh>
-      <Html position={[0, 0.08, 0]} center transform sprite>
+      <Html position={[0, 0, 0]} center transform sprite>
         <div className="bg-blue-600/80 px-1 py-0.5 rounded text-white text-[2px] font-bold uppercase tracking-widest animate-bounce whitespace-nowrap">
           Place Here
         </div>
@@ -397,6 +382,17 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
     setIsHolding(false);
   }, [currentStepIndex]);
 
+  useEffect(() => {
+    if (isHolding) {
+      document.body.style.cursor = 'none';
+    } else {
+      document.body.style.cursor = 'auto';
+    }
+    return () => {
+      document.body.style.cursor = 'auto';
+    };
+  }, [isHolding]);
+
   const handleNext = () => {
     if (currentStepIndex < project.steps.length - 1) {
       setCurrentStepIndex(prev => prev + 1);
@@ -420,23 +416,36 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
       mouse.y = 0;
     }
 
+    // Toggle Drop Logic REMOVED for Hold-to-Drag
+    // if (isHolding) {
+    //   setIsHolding(false);
+    //   return;
+    // }
+
     raycaster.current.setFromCamera(mouse, camera);
     const intersects = raycaster.current.intersectObjects(scene.children, true);
 
     if (intersects.length > 0) {
-      // Find the asset ID
-      let targetObj = intersects[0].object;
-      while (targetObj && !targetObj.name && targetObj.parent) {
-        targetObj = targetObj.parent;
-      }
+      // Loop through all intersections to find the target (in case of transparent overlays/helpers)
+      for (const hit of intersects) {
+        let targetObj = hit.object;
+        while (targetObj && !targetObj.name && targetObj.parent) {
+          targetObj = targetObj.parent;
+        }
 
-      const assetId = targetObj.name || targetObj.uuid;
-      const targetAsset = sessionAssets.find(a => a.id === currentStep?.targetAssetId);
+        const assetId = targetObj.name || targetObj.uuid;
+        const targetAsset = sessionAssets.find(a => a.id === currentStep?.targetAssetId);
 
-      if (currentStep?.targetAction === 'click' && targetAsset) {
-        handleNext();
-      } else if (currentStep?.targetAction === 'move' && targetAsset && !isHolding) {
-        setIsHolding(true);
+        // Strict check: only allow picking if we clicked the correct target object
+        if (targetAsset && assetId === targetAsset.id) {
+          if (currentStep?.targetAction === 'click') {
+            handleNext();
+            return; // Action taken, stop
+          } else if (currentStep?.targetAction === 'move' && !isHolding) {
+            setIsHolding(true);
+            return; // Action taken, stop
+          }
+        }
       }
     }
   };
@@ -451,8 +460,8 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
       if (isHolding && currentStep?.targetAssetId && !isSnapped) {
         const targetAsset = sessionAssets.find(a => a.id === currentStep.targetAssetId);
         if (targetAsset) {
-          // Object follows a point in front of camera
-          const holdPos = new THREE.Vector3(0, 0, -2.5).applyMatrix4(camera.matrixWorld);
+          // Object follows a point in front of camera (Closer for better visibility with small objects)
+          const holdPos = new THREE.Vector3(0, -0.1, -0.6).applyMatrix4(camera.matrixWorld);
           updateAssetSessionPos(targetAsset.id, holdPos);
 
           // Check for Snap
@@ -468,7 +477,7 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
           }
 
           if (targetPos) {
-            if (holdPos.distanceTo(targetPos) < 1.0) { // Reduced threshold for better precision
+            if (holdPos.distanceTo(targetPos) < 0.5) { // Reduced threshold for better precision
               setIsSnapped(true);
               setIsHolding(false);
               updateAssetSessionPos(targetAsset.id, targetPos);
@@ -500,15 +509,14 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
       else {
         const handleMouseDown = (e: MouseEvent) => {
           mouseDownPos.current = { x: e.clientX, y: e.clientY };
+          // Start interaction (Picking) immediately on MouseDown
+          handleInteraction(scene, camera, e.clientX, e.clientY);
         };
 
         const handleMouseUp = (e: MouseEvent) => {
-          const dist = Math.sqrt(
-            Math.pow(e.clientX - mouseDownPos.current.x, 2) +
-            Math.pow(e.clientY - mouseDownPos.current.y, 2)
-          );
-          if (dist < dragThreshold) {
-            handleInteraction(scene, camera, e.clientX, e.clientY);
+          // Stop holding immediately on MouseUp
+          if (isHolding) {
+            setIsHolding(false);
           }
         };
 
@@ -567,6 +575,7 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
                 <group key={asset.id} name={asset.id}>
                   {asset.type === 'shape' && (
                     <mesh
+                      name={asset.id}
                       position={asset.position}
                       rotation={asset.rotation}
                       scale={asset.scale}
@@ -750,7 +759,7 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
                     {currentStep.targetAction === 'move' && !isSnapped && (
                       <div className="flex flex-col items-end">
                         <div className="flex items-center gap-2 text-blue-400 text-[10px] font-black uppercase tracking-widest animate-bounce">
-                          {isHolding ? 'Bring it to the destination' : 'Click to grab the blue object'}
+                          {isHolding ? 'Release to drop / Drag to destination' : 'Hold click to grab object'}
                         </div>
                       </div>
                     )}
