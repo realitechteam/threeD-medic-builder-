@@ -517,10 +517,10 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
                       scale={asset.scale}
                       visible={asset.visible !== false}
                     >
-                      {asset.geometryType === 'box' && <boxGeometry args={[1, 1, 1]} />}
-                      {asset.geometryType === 'sphere' && <sphereGeometry args={[0.7, 32, 32]} />}
-                      {asset.geometryType === 'cone' && <coneGeometry args={[0.7, 1.5, 32]} />}
-                      {asset.geometryType === 'torus' && <torusGeometry args={[0.5, 0.2, 16, 100]} />}
+                      {asset.geometryType === 'box' && <boxGeometry args={[0.2, 0.2, 0.2]} />}
+                      {asset.geometryType === 'sphere' && <sphereGeometry args={[0.14, 32, 32]} />}
+                      {asset.geometryType === 'cone' && <coneGeometry args={[0.14, 0.3, 32]} />}
+                      {asset.geometryType === 'torus' && <torusGeometry args={[0.1, 0.04, 16, 100]} />}
                       <meshStandardMaterial
                         color={asset.color}
                         roughness={0.3}

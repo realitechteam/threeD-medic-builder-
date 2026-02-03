@@ -103,26 +103,49 @@ const StepManager: React.FC<StepManagerProps> = ({ steps, assets, onUpdateSteps,
               {step.targetAction === 'move' && (
                 <div className="bg-slate-900/50 p-2 rounded border border-slate-700 space-y-2">
                   <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-blue-400 flex items-center gap-1">
-                      <Anchor size={10} /> SNAP TO TARGET
-                    </label>
-                    <select
-                      className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[10px] focus:ring-1 focus:ring-blue-500 text-blue-100"
-                      value={step.snapAnchorId || ''}
-                      onChange={(e) => {
-                        const anchorId = e.target.value;
-                        const anchorAsset = assets.find(a => a.id === anchorId);
-                        updateStep(step.id, {
-                          snapAnchorId: anchorId,
-                          targetPosition: anchorAsset ? [...anchorAsset.position] as Vector3Tuple : undefined
-                        });
-                      }}
-                    >
-                      <option value="">Select Destination Object...</option>
-                      {assets.filter(a => a.id !== step.targetAssetId).map(a => (
-                        <option key={a.id} value={a.id}>{a.name}</option>
-                      ))}
-                    </select>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-blue-400 flex items-center gap-1">
+                        <Anchor size={10} /> SNAP TO TARGET
+                      </label>
+                      <div className="flex gap-2 items-center">
+                        <select
+                          className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-[10px] focus:ring-1 focus:ring-blue-500 text-blue-100 min-w-0"
+                          value={step.snapAnchorId || ''}
+                          onChange={(e) => {
+                            const anchorId = e.target.value;
+                            const anchorAsset = assets.find(a => a.id === anchorId);
+                            updateStep(step.id, {
+                              snapAnchorId: anchorId,
+                              targetPosition: anchorAsset ? [...anchorAsset.position] as Vector3Tuple : undefined
+                            });
+                          }}
+                        >
+                          <option value="">Select Destination Object...</option>
+                          {assets.filter(a => a.id !== step.targetAssetId).map(a => (
+                            <option key={a.id} value={a.id}>{a.name}</option>
+                          ))}
+                        </select>
+
+                        <button
+                          onClick={() => {
+                            if (selectedAssetId && selectedAssetId !== step.targetAssetId) {
+                              const anchorAsset = assets.find(a => a.id === selectedAssetId);
+                              if (anchorAsset) {
+                                updateStep(step.id, {
+                                  snapAnchorId: selectedAssetId,
+                                  targetPosition: [...anchorAsset.position] as Vector3Tuple
+                                });
+                              }
+                            }
+                          }}
+                          disabled={!selectedAssetId || selectedAssetId === step.targetAssetId}
+                          className="shrink-0 h-[26px] px-3 bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-bold uppercase rounded transition-all disabled:opacity-50 disabled:bg-slate-700 disabled:text-slate-500 flex items-center gap-1.5 shadow-sm active:scale-95"
+                          title="Set currently selected object in scene as destination"
+                        >
+                          <MousePointer2 size={10} /> Use Selected
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <p className="text-[8px] text-slate-500 italic leading-tight">
                     Student will drag the object. It will automatically snap when close to the target.
