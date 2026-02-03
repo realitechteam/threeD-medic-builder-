@@ -65,19 +65,37 @@ const StepManager: React.FC<StepManagerProps> = ({ steps, assets, onUpdateSteps,
                 <label className="text-[9px] uppercase font-bold text-slate-500 flex items-center gap-1">
                   <MousePointer2 size={10} /> Movable Object
                 </label>
-                <select
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[10px] focus:ring-1 focus:ring-blue-500"
-                  value={step.targetAssetId || ''}
-                  onChange={(e) => updateStep(step.id, {
-                    targetAssetId: e.target.value,
-                    targetAction: e.target.value ? (step.targetAction === 'none' ? 'click' : step.targetAction) : 'none'
-                  })}
-                >
-                  <option value="">No object selected</option>
-                  {assets.map(a => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
+                <div className="flex gap-2 items-center">
+                  <select
+                    className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-[10px] focus:ring-1 focus:ring-blue-500 min-w-0"
+                    value={step.targetAssetId || ''}
+                    onChange={(e) => updateStep(step.id, {
+                      targetAssetId: e.target.value,
+                      targetAction: e.target.value ? (step.targetAction === 'none' ? 'click' : step.targetAction) : 'none'
+                    })}
+                  >
+                    <option value="">No object selected</option>
+                    {assets.map(a => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+
+                  <button
+                    onClick={() => {
+                      if (selectedAssetId && selectedAssetId !== step.targetAssetId) {
+                        updateStep(step.id, {
+                          targetAssetId: selectedAssetId,
+                          targetAction: step.targetAction === 'none' ? 'click' : step.targetAction
+                        });
+                      }
+                    }}
+                    disabled={!selectedAssetId || selectedAssetId === step.targetAssetId}
+                    className="shrink-0 h-[26px] px-3 bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-bold uppercase rounded transition-all disabled:opacity-50 disabled:bg-slate-700 disabled:text-slate-500 flex items-center gap-1.5 shadow-sm active:scale-95"
+                    title="Set currently selected object in scene as target"
+                  >
+                    <MousePointer2 size={10} /> Use Selected
+                  </button>
+                </div>
               </div>
 
               {step.targetAssetId && (

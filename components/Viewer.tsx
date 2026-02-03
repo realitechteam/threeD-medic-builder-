@@ -314,6 +314,49 @@ const ViewerLoader = () => {
   );
 };
 
+// Ghost Hint Component
+const GhostHint: React.FC<{
+  step: Step;
+  assets: Asset[];
+}> = ({ step, assets }) => {
+  const targetAsset = useMemo(() => assets.find(a => a.id === step.targetAssetId), [assets, step.targetAssetId]);
+
+  const targetPos = useMemo(() => {
+    if (step.snapAnchorId) {
+      const anchor = assets.find(a => a.id === step.snapAnchorId);
+      return anchor ? anchor.position : null;
+    }
+    return step.targetPosition || null;
+  }, [step, assets]);
+
+  if (!targetAsset || !targetPos || step.targetAction !== 'move') return null;
+
+  return (
+    <group position={targetPos} rotation={targetAsset.rotation} scale={targetAsset.scale}>
+      {/* Pulse Effect */}
+      <mesh>
+        {targetAsset.geometryType === 'box' && <boxGeometry args={[0.2, 0.2, 0.2]} />}
+        {targetAsset.geometryType === 'sphere' && <sphereGeometry args={[0.14, 32, 32]} />}
+        {targetAsset.geometryType === 'cone' && <coneGeometry args={[0.14, 0.3, 32]} />}
+        {targetAsset.geometryType === 'torus' && <torusGeometry args={[0.1, 0.04, 16, 100]} />}
+        <meshStandardMaterial
+          color={targetAsset.color}
+          transparent
+          opacity={0.3}
+          emissive={targetAsset.color}
+          emissiveIntensity={0.5}
+          wireframe
+        />
+      </mesh>
+      <Html position={[0, 0.08, 0]} center transform sprite>
+        <div className="bg-blue-600/80 px-1 py-0.5 rounded text-white text-[2px] font-bold uppercase tracking-widest animate-bounce whitespace-nowrap">
+          Place Here
+        </div>
+      </Html>
+    </group>
+  );
+};
+
 const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isShared = false }) => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [completed, setCompleted] = useState(false);
@@ -413,16 +456,23 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
           updateAssetSessionPos(targetAsset.id, holdPos);
 
           // Check for Snap
+          let targetPos: THREE.Vector3 | null = null;
+
           if (currentStep.snapAnchorId) {
             const anchorAsset = sessionAssets.find(a => a.id === currentStep.snapAnchorId);
             if (anchorAsset) {
-              const anchorPos = new THREE.Vector3(...anchorAsset.position);
-              if (holdPos.distanceTo(anchorPos) < 1.5) {
-                setIsSnapped(true);
-                setIsHolding(false);
-                updateAssetSessionPos(targetAsset.id, anchorPos);
-                setTimeout(handleNext, 800);
-              }
+              targetPos = new THREE.Vector3(...anchorAsset.position);
+            }
+          } else if (currentStep.targetPosition) {
+            targetPos = new THREE.Vector3(...currentStep.targetPosition);
+          }
+
+          if (targetPos) {
+            if (holdPos.distanceTo(targetPos) < 1.0) { // Reduced threshold for better precision
+              setIsSnapped(true);
+              setIsHolding(false);
+              updateAssetSessionPos(targetAsset.id, targetPos);
+              setTimeout(handleNext, 800);
             }
           }
         }
@@ -501,6 +551,11 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
             <InteractionManager />
 
             <gridHelper args={[100, 100, 0x222222, 0x111111]} position={[0, 0, 0]} />
+
+            {/* Ghost Hint for Move Steps */}
+            {currentStep && !completed && !isSnapped && (
+              <GhostHint step={currentStep} assets={sessionAssets} />
+            )}
 
             {sessionAssets.map((asset) => {
               if (asset.type === 'player_start') return null; // Don't show player start mesh in viewer
