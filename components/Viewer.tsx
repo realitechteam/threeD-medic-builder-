@@ -195,7 +195,7 @@ const Player = ({ initialPos, joystickInput, lookInput, collidableAssets, isMobi
   useFrame((state, delta) => {
     if (isPresenting) return; // XR handles its own camera
 
-    const speed = isMobile ? 2.5 : 5;
+    const speed = isMobile ? 1.5 : 2.5;
     const friction = 10;
     const playerRadius = 0.5;
     const lookSpeed = 2.5;
@@ -283,7 +283,9 @@ const ViewerModel: React.FC<{
   asset: Asset;
   isTarget?: boolean;
   isAnchor?: boolean;
-}> = ({ asset, isTarget, isAnchor }) => {
+  renderOrder?: number;
+  isHolding?: boolean;
+}> = ({ asset, isTarget, isAnchor, renderOrder = 0, isHolding = false }) => {
   const { scene } = useGLTF(asset.url!);
   const clonedScene = useMemo(() => {
     const s = scene.clone();
@@ -298,7 +300,37 @@ const ViewerModel: React.FC<{
     s.traverse((child) => {
       // Keep only empty name or force clear existing ones (unless it's critical, but usually not for visual props)
       child.name = "";
+
+      // Apply renderOrder to all children for proper layering
+      if (renderOrder !== undefined && renderOrder !== 0) {
+        child.renderOrder = renderOrder;
+      }
     });
+
+    // CRITICAL: Disable depth testing when object is being held to ensure it renders on top
+    if (isHolding) {
+      s.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          // Clone material to avoid affecting other instances
+          if (mesh.material) {
+            if (Array.isArray(mesh.material)) {
+              mesh.material = mesh.material.map(mat => {
+                const clonedMat = mat.clone();
+                clonedMat.depthTest = false;
+                clonedMat.depthWrite = false;
+                return clonedMat;
+              });
+            } else {
+              const clonedMat = mesh.material.clone();
+              clonedMat.depthTest = false;
+              clonedMat.depthWrite = false;
+              mesh.material = clonedMat;
+            }
+          }
+        }
+      });
+    }
 
     // Material Override Logic for Snap Proxy / Ghost Mode
     if (asset.opacity !== undefined && asset.opacity < 1) {
@@ -312,14 +344,15 @@ const ViewerModel: React.FC<{
             roughness: 0.5,
             metalness: 0.5,
             side: THREE.DoubleSide,
-            depthWrite: true
+            depthWrite: !isHolding,
+            depthTest: !isHolding
           });
         }
       });
     }
 
     return s;
-  }, [scene, asset.id, asset.opacity, asset.color]);
+  }, [scene, asset.id, asset.opacity, asset.color, renderOrder, isHolding]);
 
   return (
     <group
@@ -328,6 +361,7 @@ const ViewerModel: React.FC<{
       rotation={asset.rotation}
       scale={asset.scale}
       visible={asset.visible !== false}
+      renderOrder={renderOrder}
     >
       <primitive object={clonedScene} />
     </group>
@@ -363,10 +397,12 @@ const GhostHint: React.FC<{
 
   if (!targetAsset || !targetPos || step.targetAction !== 'move') return null;
 
+  const offsetPos: Vector3Tuple = [targetPos[0], targetPos[1] + 0.1, targetPos[2]];
+
   return (
-    <group position={targetPos} rotation={targetAsset.rotation} scale={targetAsset.scale}>
+    <group position={offsetPos} rotation={targetAsset.rotation} scale={targetAsset.scale}>
       <Html position={[0, 0, 0]} center transform sprite>
-        <div className="bg-blue-600/80 px-1 py-0.5 rounded text-white text-[2px] font-bold uppercase tracking-widest animate-bounce whitespace-nowrap">
+        <div className="bg-blue-600/80 px-0.5 py-0.45 rounded text-white text-[1px] font-bold uppercase tracking-widest animate-bounce whitespace-nowrap">
           Place Here
         </div>
       </Html>
@@ -386,6 +422,10 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
   const [lookVal, setLookVal] = useState({ x: 0, y: 0 });
 
   const [snappedAnchors, setSnappedAnchors] = useState<Set<string>>(new Set());
+  const [snappedObjects, setSnappedObjects] = useState<Set<string>>(new Set()); // Track which objects have been snapped and locked
+
+  // Ref to prevent multiple snap triggers (React state is async, need immediate blocking)
+  const isSnapProcessing = useRef(false);
 
   const currentStep = project.steps[currentStepIndex];
   const raycaster = useRef(new THREE.Raycaster());
@@ -425,6 +465,8 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
   useEffect(() => {
     setIsSnapped(false);
     setIsHolding(false);
+    // Reset snap processing flag when step changes
+    isSnapProcessing.current = false;
   }, [currentStepIndex]);
 
   useEffect(() => {
@@ -519,9 +561,11 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
     }, [currentStep, sessionAssets, scene]);
 
     useFrame(() => {
-      if (isHolding && currentStep?.targetAssetId && !isSnapped) {
+      // CRITICAL: Check ref flag FIRST to prevent duplicate snaps (state is async!)
+      if (isHolding && currentStep?.targetAssetId && !isSnapped && !isSnapProcessing.current) {
         const targetAsset = sessionAssets.find(a => a.id === currentStep.targetAssetId);
-        if (targetAsset) {
+        // Don't update if this object is already snapped (locked)
+        if (targetAsset && !snappedObjects.has(targetAsset.id)) {
           // Object follows a point in front of camera (Closer for better visibility with small objects)
           const isLargeObject = targetAsset.geometryType === 'facility' || targetAsset.geometryType === 'room';
           const holdDistance = isLargeObject ? 2.5 : 0.8;
@@ -567,10 +611,17 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
             }
 
             if (shouldSnap) {
+              // IMMEDIATELY set flag to prevent duplicate triggers in next frames
+              isSnapProcessing.current = true;
+
               setIsSnapped(true);
               setIsHolding(false);
 
+              // IMPORTANT: Set EXACT target position and rotation FIRST (before locking)
               updateAssetSessionTransform(targetAsset.id, targetPos, targetRot || targetAsset.rotation);
+
+              // THEN lock the object to prevent any further movement
+              setSnappedObjects(prev => new Set(prev).add(targetAsset.id));
 
               if (currentStep.snapAnchorId) {
                 setSnappedAnchors(prev => new Set(prev).add(currentStep.snapAnchorId!));
@@ -628,6 +679,9 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
   };
 
   const updateAssetSessionTransform = (id: string, pos: THREE.Vector3, rot?: Vector3Tuple) => {
+    // Don't update transform if object is already snapped (locked)
+    if (snappedObjects.has(id)) return;
+
     setSessionAssets(prev => prev.map(a => {
       if (a.id === id) {
         return {
@@ -645,6 +699,7 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
     setCurrentStepIndex(0);
     setSessionAssets(project.assets); // Reset asset positions
     setSnappedAnchors(new Set()); // Reset hidden anchors
+    setSnappedObjects(new Set()); // Reset locked objects
   };
 
   return (
@@ -676,11 +731,23 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
               const isTarget = currentStep?.targetAssetId === asset.id;
               const isAnchor = currentStep?.snapAnchorId === asset.id;
 
-              // Hide Snap Proxy if snapped or previously snapped (Persistent hide)
-              if ((isSnapped && isAnchor) || snappedAnchors.has(asset.id)) return null;
+              // Check if this asset is a snap anchor for a future step (not current step)
+              const isFutureStepAnchor = project.steps.some((step, idx) =>
+                idx > currentStepIndex && step.snapAnchorId === asset.id
+              );
+
+              // Hide Snap Proxy if:
+              // 1. Currently snapped and is current anchor
+              // 2. Previously snapped (in snappedAnchors set)
+              // 3. Is a snap anchor for a future step (not yet reached)
+              if ((isSnapped && isAnchor) || snappedAnchors.has(asset.id) || isFutureStepAnchor) return null;
 
               return (
-                <group key={asset.id} name={asset.id}>
+                <group
+                  key={asset.id}
+                  name={asset.id}
+                  renderOrder={isTarget && isHolding ? 999 : 0}
+                >
                   {asset.type === 'shape' && (
                     <mesh
                       name={asset.id}
@@ -699,6 +766,8 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
                         metalness={0.2}
                         emissive={isTarget ? '#3b82f6' : isAnchor ? '#10b981' : 'black'}
                         emissiveIntensity={(isTarget || isAnchor) ? 0.4 : 0}
+                        depthTest={!(isTarget && isHolding)}
+                        depthWrite={!(isTarget && isHolding)}
                       />
                     </mesh>
                   )}
@@ -719,7 +788,11 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
                   )}
 
                   {asset.type === 'model' && asset.url && (
-                    <ViewerModel asset={asset} />
+                    <ViewerModel
+                      asset={asset}
+                      renderOrder={isTarget && isHolding ? 999 : 0}
+                      isHolding={isTarget && isHolding}
+                    />
                   )}
                 </group>
               );

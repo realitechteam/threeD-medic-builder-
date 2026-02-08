@@ -1,6 +1,6 @@
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Box, Type, Circle, Triangle, Layers, Upload, Loader2, User, ChevronDown, ChevronRight } from 'lucide-react';
+import { Box, Type, Circle, Triangle, Layers, Upload, Loader2, User, ChevronDown, ChevronRight, Watch, Gem } from 'lucide-react';
 import { Asset } from '../types';
 
 interface SidebarProps {
@@ -20,6 +20,7 @@ interface ModelsData {
   humanModels: ModelConfig[];
   facilityModels: ModelConfig[];
   roomModels: ModelConfig[];
+  jewelryModels: ModelConfig[];
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ onAddAsset, hasPlayerStart = false }) => {
@@ -29,8 +30,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddAsset, hasPlayerStart = false })
   const [humanModels, setHumanModels] = useState<any[]>([]);
   const [facilityModels, setFacilityModels] = useState<any[]>([]);
   const [roomModels, setRoomModels] = useState<any[]>([]);
+  const [jewelryModels, setJewelryModels] = useState<any[]>([]);
   const [isFacilityExpanded, setIsFacilityExpanded] = useState(true);
   const [isRoomExpanded, setIsRoomExpanded] = useState(true);
+  const [isJewelryExpanded, setIsJewelryExpanded] = useState(true);
 
   // Icon mapping
   const iconMap: { [key: string]: React.ReactNode } = {
@@ -39,6 +42,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddAsset, hasPlayerStart = false })
     Triangle: <Triangle />,
     Layers: <Layers />,
     User: <User />,
+    Watch: <Watch />,
+    Gem: <Gem />,
   };
 
   // Load models from JSON
@@ -53,6 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddAsset, hasPlayerStart = false })
         setHumanModels(data.humanModels.map(item => ({ ...item, icon: iconMap[item.icon] })));
         setFacilityModels(data.facilityModels.map(item => ({ ...item, icon: iconMap[item.icon] })));
         setRoomModels(data.roomModels.map(item => ({ ...item, icon: iconMap[item.icon] })));
+        setJewelryModels(data.jewelryModels.map(item => ({ ...item, icon: iconMap[item.icon] })));
       } catch (error) {
         console.error('Failed to load models config:', error);
         // Fallback to empty arrays
@@ -60,6 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddAsset, hasPlayerStart = false })
         setHumanModels([]);
         setFacilityModels([]);
         setRoomModels([]);
+        setJewelryModels([]);
       }
     };
 
@@ -220,6 +227,36 @@ const Sidebar: React.FC<SidebarProps> = ({ onAddAsset, hasPlayerStart = false })
                 className="flex flex-col items-center justify-center p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all hover:scale-105 active:scale-95 group cursor-grab active:cursor-grabbing"
               >
                 <div className="text-purple-400 mb-2 group-hover:scale-110 transition-transform pointer-events-none">{model.icon}</div>
+                <span className="text-xs font-medium text-slate-300 pointer-events-none">{model.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <div
+          className="flex items-center justify-between mb-4 cursor-pointer hover:bg-slate-800/50 p-1 rounded transition-colors"
+          onClick={() => setIsJewelryExpanded(!isJewelryExpanded)}
+        >
+          <div className="flex items-center gap-2">
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Jewelry Models</h4>
+            {isJewelryExpanded ? <ChevronDown size={14} className="text-slate-500" /> : <ChevronRight size={14} className="text-slate-500" />}
+          </div>
+          <span className="text-[10px] text-slate-600 italic">Drag to scene</span>
+        </div>
+
+        {isJewelryExpanded && (
+          <div className="grid grid-cols-2 gap-2">
+            {jewelryModels.map((model) => (
+              <button
+                key={model.label}
+                draggable
+                onDragStart={(e) => handleDragStart(e, 'model', 'jewelry', model.url, model.label)}
+
+                className="flex flex-col items-center justify-center p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all hover:scale-105 active:scale-95 group cursor-grab active:cursor-grabbing"
+              >
+                <div className="text-amber-400 mb-2 group-hover:scale-110 transition-transform pointer-events-none">{model.icon}</div>
                 <span className="text-xs font-medium text-slate-300 pointer-events-none">{model.label}</span>
               </button>
             ))}

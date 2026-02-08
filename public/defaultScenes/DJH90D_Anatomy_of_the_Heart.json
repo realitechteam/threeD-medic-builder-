@@ -1,0 +1,655 @@
+{
+  "projectName": "Anatomy of the Heart",
+  "assets": [
+    {
+      "id": "default_env_01",
+      "name": "Environment",
+      "type": "model",
+      "url": "/models/rooms/mainHospital.glb",
+      "color": "#ffffff",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "locked": true
+    },
+    {
+      "id": "asset_1770542434064_7pcoi",
+      "name": "New player_start",
+      "type": "player_start",
+      "color": "#ffffff",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770542454981_qfj95",
+      "name": "Operating Table",
+      "type": "model",
+      "geometryType": "facility",
+      "color": "#ffffff",
+      "position": [
+        -1.6895097302018591,
+        0,
+        1.488736584153527
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/Facility/OperatinTable.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770543026623_7f1q1",
+      "name": "Table",
+      "type": "model",
+      "geometryType": "facility",
+      "color": "#ffffff",
+      "position": [
+        2.238795570319132,
+        0,
+        -1.448746887656824
+      ],
+      "rotation": [
+        -0.0000976437580358918,
+        -1.50997722060793,
+        0.02400552179367563
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/Facility/table.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770543571366_ot7pl",
+      "name": "Patient V1",
+      "type": "model",
+      "geometryType": "human",
+      "color": "#ffffff",
+      "position": [
+        -1.6575809321714725,
+        0.9813338304162063,
+        1.5274685648973614
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/patient/patient-v1.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770543613556_z8igm",
+      "name": "Apple Watch Ultra",
+      "type": "model",
+      "geometryType": "jewelry",
+      "color": "#ffffff",
+      "position": [
+        -1.5050284913379397,
+        1.0911586851579764,
+        1.2417068164837133
+      ],
+      "rotation": [
+        -0.824168774079564,
+        0.5330545432732359,
+        -0.2183024412312265
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/jewelry/apple watch ultra.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770543748876_dgcrs",
+      "name": "Ring",
+      "type": "model",
+      "geometryType": "jewelry",
+      "color": "#ffffff",
+      "position": [
+        -1.7149403384130175,
+        1.1341102311317803,
+        1.3478323271476003
+      ],
+      "rotation": [
+        0.017186834701401563,
+        -0.14556463033237516,
+        0.11794975695160168
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/jewelry/ring.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770543817151_73xmh",
+      "name": "Necklace",
+      "type": "model",
+      "geometryType": "jewelry",
+      "color": "#ffffff",
+      "position": [
+        -1.6691300174284425,
+        1.057535988870783,
+        0.8973111273429918
+      ],
+      "rotation": [
+        -0.34246613811845467,
+        -0.07711515422121817,
+        -0.010776433275239476
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/jewelry/necklace.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770543910741_2n5qe",
+      "name": "Golden Ear Ring",
+      "type": "model",
+      "geometryType": "jewelry",
+      "color": "#ffffff",
+      "position": [
+        -1.5614780675963131,
+        0.9795758682691755,
+        0.7770627756455487
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/jewelry/golden ear ring.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770544357744_7ofdg",
+      "name": "Table 2",
+      "type": "model",
+      "geometryType": "facility",
+      "color": "#ffffff",
+      "position": [
+        -2.538879836195726,
+        -0.061617037499099275,
+        0.8493234059211034
+      ],
+      "rotation": [
+        0.0028767161821597114,
+        1.5650025953327358,
+        -0.002789810575861616
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/Facility/Table 2.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770544404086_wg7sr",
+      "name": "Surgery Equipment Trolly",
+      "type": "model",
+      "geometryType": "facility",
+      "color": "#ffffff",
+      "position": [
+        -0.8112421429249375,
+        4.440892098500626e-16,
+        2.8983450029853053
+      ],
+      "rotation": [
+        0,
+        -1.5362928024059495,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/Facility/Surgery_Equipmet_trolly.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770544521768_1y5lw",
+      "name": "Apple Watch Ultra (Snap)",
+      "type": "model",
+      "geometryType": "jewelry",
+      "color": "#10b981",
+      "position": [
+        -0.5949933013849673,
+        0.7685776414586355,
+        2.880161925519197
+      ],
+      "rotation": [
+        3.0940454338520205,
+        0.020905336005905807,
+        1.5435346266186285
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/jewelry/apple watch ultra.glb",
+      "visible": true,
+      "opacity": 0.5
+    },
+    {
+      "id": "asset_1770544583538_5h8ed",
+      "name": "Necklace (Snap)",
+      "type": "model",
+      "geometryType": "jewelry",
+      "color": "#10b981",
+      "position": [
+        -0.7413232163015362,
+        0.7611146077506544,
+        2.799531437953559
+      ],
+      "rotation": [
+        2.5315174429306513,
+        0.12508633150674198,
+        -3.0556904822920354
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/jewelry/necklace.glb",
+      "visible": true,
+      "opacity": 0.5
+    },
+    {
+      "id": "asset_1770544636622_umis3",
+      "name": "Ring (Snap)",
+      "type": "model",
+      "geometryType": "jewelry",
+      "color": "#10b981",
+      "position": [
+        -0.9065164386515016,
+        0.7530553653173129,
+        2.9247174790448978
+      ],
+      "rotation": [
+        -0.4008213410304562,
+        0,
+        1.594640451693846
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/jewelry/ring.glb",
+      "visible": true,
+      "opacity": 0.5
+    },
+    {
+      "id": "asset_1770544685393_98ewv",
+      "name": "Golden Ear Ring (Snap)",
+      "type": "model",
+      "geometryType": "jewelry",
+      "color": "#10b981",
+      "position": [
+        -0.9755562327451492,
+        0.7485195755183032,
+        2.931836266215165
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/jewelry/golden ear ring.glb",
+      "visible": true,
+      "opacity": 0.5
+    },
+    {
+      "id": "asset_1770544958465_xajuj",
+      "name": "Scanner",
+      "type": "model",
+      "geometryType": "facility",
+      "color": "#ffffff",
+      "position": [
+        1.9408006262977162,
+        0,
+        1.75561372810373
+      ],
+      "rotation": [
+        3.141592653589793,
+        0.018158339041407963,
+        3.141592653589793
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/Facility/scaner.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770545246461_8i13w",
+      "name": "Medicine Bottle B",
+      "type": "model",
+      "geometryType": "facility",
+      "color": "#ffffff",
+      "position": [
+        -2.6130935928275383,
+        0.7394074979570094,
+        0.6447484012414215
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/Facility/MedicineBottleB.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770545292291_c060k",
+      "name": "Medicine Box A",
+      "type": "model",
+      "geometryType": "facility",
+      "color": "#ffffff",
+      "position": [
+        -2.601750316848255,
+        0.7392644919514185,
+        1.0279412982336429
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/Facility/MedicineBoxA.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770545341161_p0li9",
+      "name": "Medicine Bottle B",
+      "type": "model",
+      "geometryType": "facility",
+      "color": "#ffffff",
+      "position": [
+        -2.615647673606109,
+        0.7359614256071976,
+        0.7106541538043454
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/Facility/MedicineBottleB.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770545393911_64jha",
+      "name": "Medicine Bottle B",
+      "type": "model",
+      "geometryType": "facility",
+      "color": "#ffffff",
+      "position": [
+        -2.6301965031013403,
+        0.7214301285364787,
+        0.7717947735871187
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/Facility/MedicineBottleB.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770545420344_i2v6p",
+      "name": "Medicine Box B",
+      "type": "model",
+      "geometryType": "facility",
+      "color": "#ffffff",
+      "position": [
+        -2.6150670778783023,
+        0.6481707781019791,
+        0.8707349724607624
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/Facility/MedicineBoxB.glb",
+      "visible": true,
+      "opacity": 1
+    },
+    {
+      "id": "asset_1770545481644_wbxl3",
+      "name": "Patient V1 (Snap) (Snap)",
+      "type": "model",
+      "geometryType": "human",
+      "color": "#10b981",
+      "position": [
+        1.9412752395151327,
+        1.212530407804874,
+        1.9578688415218746
+      ],
+      "rotation": [
+        -3.141592653589793,
+        0.02126162642073026,
+        -3.141592653589793
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "url": "/models/patient/patient-v1.glb",
+      "visible": true,
+      "opacity": 0.5
+    }
+  ],
+  "steps": [
+    {
+      "id": "step_01",
+      "title": "Introduction",
+      "instruction": "Welcome to the 3D Heart Anatomy lesson.\nAre you ready to start?",
+      "cameraPosition": [
+        5,
+        5,
+        5
+      ],
+      "targetAction": "click",
+      "targetAssetId": "obj_01"
+    },
+    {
+      "id": "step_1770544746521",
+      "title": "Step 1",
+      "instruction": "Remove Apple watch ",
+      "cameraPosition": [
+        5,
+        5,
+        5
+      ],
+      "targetAction": "move",
+      "targetAssetId": "asset_1770543613556_z8igm",
+      "snapAnchorId": "asset_1770544521768_1y5lw",
+      "targetPosition": [
+        -0.5949933013849673,
+        0.7685776414586355,
+        2.880161925519197
+      ]
+    },
+    {
+      "id": "step_1770544789609",
+      "title": "Step 2",
+      "instruction": "Remove necklace",
+      "cameraPosition": [
+        5,
+        5,
+        5
+      ],
+      "targetAction": "move",
+      "targetAssetId": "asset_1770543817151_73xmh",
+      "snapAnchorId": "asset_1770544583538_5h8ed",
+      "targetPosition": [
+        -0.7413232163015362,
+        0.7611146077506544,
+        2.799531437953559
+      ]
+    },
+    {
+      "id": "step_1770544829431",
+      "title": "Step 3",
+      "instruction": "Remove ring",
+      "cameraPosition": [
+        5,
+        5,
+        5
+      ],
+      "targetAction": "move",
+      "targetAssetId": "asset_1770543748876_dgcrs",
+      "snapAnchorId": "asset_1770544636622_umis3",
+      "targetPosition": [
+        -0.9065164386515016,
+        0.7530553653173129,
+        2.9247174790448978
+      ]
+    },
+    {
+      "id": "step_1770544880035",
+      "title": "Step 4",
+      "instruction": "Remvoe Golden Ear Ring",
+      "cameraPosition": [
+        5,
+        5,
+        5
+      ],
+      "targetAction": "move",
+      "targetAssetId": "asset_1770543910741_2n5qe",
+      "snapAnchorId": "asset_1770544685393_98ewv",
+      "targetPosition": [
+        -0.9755562327451492,
+        0.7485195755183032,
+        2.931836266215165
+      ]
+    },
+    {
+      "id": "step_1770545572243",
+      "title": "Step 5",
+      "instruction": "Move patent to scaner machine",
+      "cameraPosition": [
+        5,
+        5,
+        5
+      ],
+      "targetAction": "move",
+      "targetAssetId": "asset_1770543571366_ot7pl",
+      "snapAnchorId": "asset_1770545481644_wbxl3",
+      "targetPosition": [
+        1.9412752395151327,
+        1.212530407804874,
+        1.9578688415218746
+      ]
+    }
+  ]
+}

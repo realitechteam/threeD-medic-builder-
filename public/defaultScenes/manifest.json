@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Anatomy_of_the_Heart",
+    "path": "/defaultScenes/DJH90D_Anatomy_of_the_Heart.json",
+    "description": "Interactive 3D lesson: Anatomy of the Heart"
+  },
+  {
+    "name": "Anatomy_of_the_Heart 2",
+    "path": "/defaultScenes/DQ00HD_Anatomy_of_the_Heart 2.json",
+    "description": "Interactive 3D lesson: Anatomy of the Heart"
+  },
+  {
+    "name": "Leason 1",
+    "path": "/defaultScenes/DO00YH_Leason 1.json",
+    "description": "Interactive 3D lesson: Anatomy of the Heart"
+  }
+]

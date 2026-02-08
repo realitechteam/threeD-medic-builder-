@@ -45,6 +45,11 @@
             "url": "/models/Facility/table.glb"
         },
         {
+            "label": "Table 2",
+            "icon": "Box",
+            "url": "/models/Facility/Table 2.glb"
+        },
+        {
             "label": "Medical Processor",
             "icon": "Box",
             "url": "/models/Facility/Medical_processor_2.glb"
@@ -130,6 +135,11 @@
             "url": "/models/Facility/Trolly Droor.glb"
         },
         {
+            "label": "Operating Table",
+            "icon": "Box",
+            "url": "/models/Facility/OperatinTable.glb"
+        },
+        {
             "label": "Ventilator",
             "icon": "Box",
             "url": "/models/Facility/Vantilator.glb"
@@ -150,6 +160,28 @@
             "label": "Event Room",
             "icon": "Layers",
             "url": "/models/rooms/fora_tac_eventi_-_duplicato_2.glb"
+        }
+    ],
+    "jewelryModels": [
+        {
+            "label": "Apple Watch Ultra",
+            "icon": "Watch",
+            "url": "/models/jewelry/apple watch ultra.glb"
+        },
+        {
+            "label": "Golden Ear Ring",
+            "icon": "Circle",
+            "url": "/models/jewelry/golden ear ring.glb"
+        },
+        {
+            "label": "Necklace",
+            "icon": "Gem",
+            "url": "/models/jewelry/necklace.glb"
+        },
+        {
+            "label": "Ring",
+            "icon": "Circle",
+            "url": "/models/jewelry/ring.glb"
         }
     ]
 }

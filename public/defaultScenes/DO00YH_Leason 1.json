@@ -1,0 +1,65 @@
+{
+  "projectName": "Anatomy of the Heart",
+  "assets": [
+    {
+      "id": "default_env_01",
+      "name": "Environment",
+      "type": "model",
+      "url": "/models/rooms/mainHospital.glb",
+      "color": "#ffffff",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "locked": true
+    },
+    {
+      "id": "asset_1770547260348_i47s5",
+      "name": "New player_start",
+      "type": "player_start",
+      "color": "#ffffff",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "visible": true,
+      "opacity": 1
+    }
+  ],
+  "steps": [
+    {
+      "id": "step_01",
+      "title": "Introduction",
+      "instruction": "Welcome to the 3D Heart Anatomy lesson.\nAre you ready to start?",
+      "cameraPosition": [
+        5,
+        5,
+        5
+      ],
+      "targetAction": "click",
+      "targetAssetId": "obj_01"
+    }
+  ]
+}

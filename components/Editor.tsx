@@ -6,7 +6,8 @@ import Viewport from './Viewport';
 import Sidebar from './Sidebar';
 import PropertiesPanel from './PropertiesPanel';
 import StepManager from './StepManager';
-import { Save, Play, Download, Trash2, Box, Type, Layers, Eye, EyeOff, CheckCircle, FolderOpen, User, Monitor, Smartphone, Glasses, Globe, Copy, X, Link, CheckCircle2 } from 'lucide-react';
+import ExportPopup from './ExportPopup';
+import { Save, Play, Download, Trash2, Box, Type, Layers, Eye, EyeOff, CheckCircle, FolderOpen, User, Monitor, Smartphone, Glasses, Globe, Copy, X, Link, CheckCircle2, Home } from 'lucide-react';
 
 interface EditorProps {
   project: ProjectData;
@@ -14,9 +15,10 @@ interface EditorProps {
   onSwitchMode: (updatedProject: ProjectData) => void;
   testMode: 'auto' | 'desktop' | 'mobile' | 'vr';
   onTestModeChange: (mode: 'auto' | 'desktop' | 'mobile' | 'vr') => void;
+  onBackToHome?: () => void;
 }
 
-const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode, onTestModeChange }) => {
+const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode, onTestModeChange, onBackToHome }) => {
   const [activeProject, setActiveProject] = useState<ProjectData>(project);
 
   // Sync state with props when project changes (state update from parent)
@@ -34,6 +36,7 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [publishLink, setPublishLink] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showExportPopup, setShowExportPopup] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleOpen = () => {
@@ -218,14 +221,36 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode
     }
   };
 
+  // Generate 6-character UUID (alphanumeric uppercase)
+  const generateUUID6 = (): string => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
   const handleExport = () => {
+    setShowExportPopup(true);
+  };
+
+  const confirmExport = (filename: string) => {
+    const uuid = generateUUID6();
+    const fullFilename = `${uuid}_${filename}.json`;
+
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(activeProject, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `${activeProject.projectName.replace(/\s+/g, '_')}.json`);
+    downloadAnchorNode.setAttribute("download", fullFilename);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
+
+    setShowExportPopup(false);
+    setToastMessage(`Exported: ${fullFilename}`);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
   };
 
   const handlePublish = () => {
@@ -441,7 +466,22 @@ const Editor: React.FC<EditorProps> = ({ project, onSave, onSwitchMode, testMode
           )}
         </AnimatePresence>
 
+        <ExportPopup
+          isOpen={showExportPopup}
+          onClose={() => setShowExportPopup(false)}
+          onConfirm={confirmExport}
+          defaultFilename={activeProject.projectName.replace(/\s+/g, '_')}
+        />
+
         <div className="absolute top-4 left-4 flex gap-2">
+          {onBackToHome && (
+            <button
+              onClick={onBackToHome}
+              className="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-lg transition-transform active:scale-95 border border-slate-700"
+            >
+              <Home size={18} /> Home
+            </button>
+          )}
           <input
             type="file"
             ref={fileInputRef}
