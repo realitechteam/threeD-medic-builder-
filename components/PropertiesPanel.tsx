@@ -46,14 +46,18 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ asset, onChange, onDe
           onClick={() => {
             const isSnapStyle = asset.color.toLowerCase() === '#10b981' && asset.opacity === 0.5;
             if (isSnapStyle) {
-              onChange({ color: '#ffffff', opacity: 1 });
+              // Revert logic
+              const newName = asset.name.replace(' (Snap)', '');
+              onChange({ color: '#ffffff', opacity: 1, name: newName });
             } else {
-              onChange({ color: '#10b981', opacity: 0.5 });
+              // Apply logic
+              const newName = `${asset.name} (Snap)`;
+              onChange({ color: '#10b981', opacity: 0.5, name: newName });
             }
           }}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${asset.color.toLowerCase() === '#10b981' && asset.opacity === 0.5
-              ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-              : 'bg-slate-800 text-slate-400'
+            ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+            : 'bg-slate-800 text-slate-400'
             }`}
         >
           {asset.color.toLowerCase() === '#10b981' && asset.opacity === 0.5 ? <><Anchor size={14} /> Active</> : <><Anchor size={14} /> Inactive</>}

@@ -30,6 +30,12 @@ const CustomModel: React.FC<{
     s.rotation.set(0, 0, 0);
     s.scale.set(1, 1, 1);
 
+    // Initial pass to clean up internal names so raycaster bubbles up to our wrapper Group
+    s.traverse((child: any) => {
+      // Keep only empty name or force clear existing ones
+      child.name = "";
+    });
+
     // Material Override Logic for Snap Proxy / Ghost Mode
     if (asset.opacity !== undefined && asset.opacity < 1) {
       s.traverse((child: any) => {
@@ -67,6 +73,7 @@ const CustomModel: React.FC<{
 
   return (
     <group
+      name={asset.id} // Ensure raycast bubbles up
       ref={onRef}
       position={asset.position}
       rotation={asset.rotation}

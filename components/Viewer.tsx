@@ -289,6 +289,17 @@ const ViewerModel: React.FC<{
     const s = scene.clone();
     s.name = asset.id; // Assign ID for collision detection
 
+    // Reset transform to identity and CLEAR internal names
+    s.position.set(0, 0, 0);
+    s.rotation.set(0, 0, 0);
+    s.scale.set(1, 1, 1);
+
+    // Initial pass to clean up internal names so raycaster bubbles up to our wrapper Group
+    s.traverse((child) => {
+      // Keep only empty name or force clear existing ones (unless it's critical, but usually not for visual props)
+      child.name = "";
+    });
+
     // Material Override Logic for Snap Proxy / Ghost Mode
     if (asset.opacity !== undefined && asset.opacity < 1) {
       s.traverse((child) => {
@@ -299,7 +310,9 @@ const ViewerModel: React.FC<{
             transparent: true,
             opacity: asset.opacity,
             roughness: 0.5,
-            metalness: 0.5
+            metalness: 0.5,
+            side: THREE.DoubleSide,
+            depthWrite: true
           });
         }
       });
@@ -309,13 +322,15 @@ const ViewerModel: React.FC<{
   }, [scene, asset.id, asset.opacity, asset.color]);
 
   return (
-    <primitive
-      object={clonedScene}
+    <group
+      name={asset.id} // Ensure raycast bubbles up to identifying name
       position={asset.position}
       rotation={asset.rotation}
       scale={asset.scale}
       visible={asset.visible !== false}
-    />
+    >
+      <primitive object={clonedScene} />
+    </group>
   );
 };
 
@@ -587,6 +602,9 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
 
               const isTarget = currentStep?.targetAssetId === asset.id;
               const isAnchor = currentStep?.snapAnchorId === asset.id;
+
+              // Hide Snap Proxy if snapped (User request: hide to show "filled" state)
+              if (isSnapped && isAnchor) return null;
 
               return (
                 <group key={asset.id} name={asset.id}>
