@@ -288,8 +288,25 @@ const ViewerModel: React.FC<{
   const clonedScene = useMemo(() => {
     const s = scene.clone();
     s.name = asset.id; // Assign ID for collision detection
+
+    // Material Override Logic for Snap Proxy / Ghost Mode
+    if (asset.opacity !== undefined && asset.opacity < 1) {
+      s.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const m = child as THREE.Mesh;
+          m.material = new THREE.MeshStandardMaterial({
+            color: asset.color,
+            transparent: true,
+            opacity: asset.opacity,
+            roughness: 0.5,
+            metalness: 0.5
+          });
+        }
+      });
+    }
+
     return s;
-  }, [scene, asset.id]);
+  }, [scene, asset.id, asset.opacity, asset.color]);
 
   return (
     <primitive

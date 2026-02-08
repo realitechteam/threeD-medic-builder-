@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Asset, Vector3Tuple } from '../types';
-import { Eye, EyeOff, Shield, ShieldOff, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Shield, ShieldOff, Trash2, Anchor } from 'lucide-react';
 
 interface PropertiesPanelProps {
   asset: Asset;
@@ -37,6 +37,26 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ asset, onChange, onDe
           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${asset.isCollidable === false ? 'bg-slate-800 text-slate-400' : 'bg-green-600/20 text-green-400 border border-green-500/30'}`}
         >
           {asset.isCollidable === false ? <><ShieldOff size={14} /> Disabled</> : <><Shield size={14} /> Enabled</>}
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] uppercase font-bold text-slate-500">Snap Proxy</label>
+        <button
+          onClick={() => {
+            const isSnapStyle = asset.color.toLowerCase() === '#10b981' && asset.opacity === 0.5;
+            if (isSnapStyle) {
+              onChange({ color: '#ffffff', opacity: 1 });
+            } else {
+              onChange({ color: '#10b981', opacity: 0.5 });
+            }
+          }}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${asset.color.toLowerCase() === '#10b981' && asset.opacity === 0.5
+              ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+              : 'bg-slate-800 text-slate-400'
+            }`}
+        >
+          {asset.color.toLowerCase() === '#10b981' && asset.opacity === 0.5 ? <><Anchor size={14} /> Active</> : <><Anchor size={14} /> Inactive</>}
         </button>
       </div>
 

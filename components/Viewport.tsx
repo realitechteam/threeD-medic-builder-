@@ -22,30 +22,61 @@ const CustomModel: React.FC<{
   onRef: (el: THREE.Object3D) => void
 }> = ({ asset, onPointerDown, onClick, onRef }) => {
   const { scene } = useGLTF(asset.url!);
-  const clonedScene = useMemo(() => scene.clone(), [scene]);
+  const clonedScene = useMemo(() => {
+    const s = scene.clone();
+
+    // Reset transform to identity to avoid double-transforming inside the Group
+    s.position.set(0, 0, 0);
+    s.rotation.set(0, 0, 0);
+    s.scale.set(1, 1, 1);
+
+    // Material Override Logic for Snap Proxy / Ghost Mode
+    if (asset.opacity !== undefined && asset.opacity < 1) {
+      s.traverse((child: any) => {
+        if (child.isMesh) {
+          child.material = new THREE.MeshStandardMaterial({
+            color: asset.color,
+            transparent: true,
+            opacity: asset.opacity,
+            roughness: 0.5,
+            metalness: 0.5,
+            side: THREE.DoubleSide,
+            depthWrite: true
+          });
+        }
+      });
+    } else {
+      // Ensure original materials are used (or restored if we were using a cached modified scene, though clone() should handle it)
+      // The clone() above gives us a fresh structure sharing geometry/material.
+      // If we want to support independent opacity on original materials without losing texture:
+      s.traverse((child: any) => {
+        if (child.isMesh) {
+          child.material = child.material.clone();
+          child.material.transparent = true;
+          child.material.opacity = asset.opacity ?? 1;
+        }
+      });
+    }
+
+    return s;
+  }, [scene, asset.id, asset.opacity, asset.color]);
 
   useEffect(() => {
-    clonedScene.traverse((child: any) => {
-      if (child.isMesh) {
-        child.material = child.material.clone();
-        child.material.transparent = true;
-        child.material.opacity = asset.opacity ?? 1;
-        child.material.needsUpdate = true;
-      }
-    });
-  }, [clonedScene, asset.opacity]);
+    // Side effects if needed, but the main logic is now in useMemo for the scene graph construction
+  }, [clonedScene]);
 
   return (
-    <primitive
-      object={clonedScene}
+    <group
+      ref={onRef}
       position={asset.position}
       rotation={asset.rotation}
       scale={asset.scale}
       visible={asset.visible !== false}
       onPointerDown={asset.visible !== false ? onPointerDown : undefined}
       onClick={asset.visible !== false ? onClick : undefined}
-      ref={onRef}
-    />
+    >
+      <primitive object={clonedScene} />
+    </group>
   );
 };
 
