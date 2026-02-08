@@ -385,6 +385,8 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
   const [joystickVal, setJoystickVal] = useState({ x: 0, y: 0 });
   const [lookVal, setLookVal] = useState({ x: 0, y: 0 });
 
+  const [snappedAnchors, setSnappedAnchors] = useState<Set<string>>(new Set());
+
   const currentStep = project.steps[currentStepIndex];
   const raycaster = useRef(new THREE.Raycaster());
   const mouse = new THREE.Vector2(0, 0); // Center of screen for FPS
@@ -406,8 +408,19 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
   }, [project.assets]);
 
   const collidableAssets = useMemo(() => {
-    return sessionAssets.filter(a => a.isCollidable !== false && a.type !== 'player_start');
-  }, [sessionAssets]);
+    return sessionAssets.filter(a => {
+      // Exclude player start
+      if (a.type === 'player_start') return false;
+      // Exclude non-collidable explicitly set
+      if (a.isCollidable === false) return false;
+      // Exclude Snap Proxies (opacity < 1 means ghost/guide)
+      if (a.opacity !== undefined && a.opacity < 1) return false;
+      // Exclude currently held object to prevent self-collision while moving
+      if (isHolding && currentStep?.targetAssetId === a.id) return false;
+
+      return true;
+    });
+  }, [sessionAssets, isHolding, currentStep]);
 
   useEffect(() => {
     setIsSnapped(false);
@@ -488,31 +501,81 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
     const dragThreshold = 5; // pixels
     const mouseDownPos = useRef({ x: 0, y: 0 });
 
+    const [targetBox, setTargetBox] = useState<THREE.Box3 | null>(null);
+
+    // Optimize: Pre-calculate target box when step changes
+    useEffect(() => {
+      if (currentStep?.snapAnchorId) {
+        const anchorAsset = sessionAssets.find(a => a.id === currentStep.snapAnchorId);
+        if (anchorAsset) {
+          const anchorObj = scene.getObjectByName(anchorAsset.id);
+          if (anchorObj) {
+            setTargetBox(new THREE.Box3().setFromObject(anchorObj));
+          }
+        }
+      } else {
+        setTargetBox(null);
+      }
+    }, [currentStep, sessionAssets, scene]);
+
     useFrame(() => {
       if (isHolding && currentStep?.targetAssetId && !isSnapped) {
         const targetAsset = sessionAssets.find(a => a.id === currentStep.targetAssetId);
         if (targetAsset) {
           // Object follows a point in front of camera (Closer for better visibility with small objects)
-          const holdPos = new THREE.Vector3(0, -0.1, -0.6).applyMatrix4(camera.matrixWorld);
-          updateAssetSessionPos(targetAsset.id, holdPos);
+          const isLargeObject = targetAsset.geometryType === 'facility' || targetAsset.geometryType === 'room';
+          const holdDistance = isLargeObject ? 2.5 : 0.8;
+
+          // VR/Mobile Optimization: Use simple vector math for performance
+          const holdPos = new THREE.Vector3(0, -0.1, -holdDistance).applyMatrix4(camera.matrixWorld);
+          updateAssetSessionTransform(targetAsset.id, holdPos);
 
           // Check for Snap
           let targetPos: THREE.Vector3 | null = null;
+          let targetRot: Vector3Tuple | null = null;
 
           if (currentStep.snapAnchorId) {
             const anchorAsset = sessionAssets.find(a => a.id === currentStep.snapAnchorId);
             if (anchorAsset) {
               targetPos = new THREE.Vector3(...anchorAsset.position);
+              targetRot = anchorAsset.rotation;
             }
           } else if (currentStep.targetPosition) {
             targetPos = new THREE.Vector3(...currentStep.targetPosition);
           }
 
           if (targetPos) {
-            if (holdPos.distanceTo(targetPos) < 0.5) { // Reduced threshold for better precision
+            let shouldSnap = false;
+
+            if (targetBox) {
+              // OBJECT-TO-OBJECT COLLISION SNAP (Optimized)
+              const heldObj = scene.getObjectByName(targetAsset.id);
+              if (heldObj) {
+                // Compute held box (must be per-frame as it moves)
+                const heldBox = new THREE.Box3().setFromObject(heldObj);
+
+                // Check intersection with cached target box
+                if (heldBox.intersectsBox(targetBox)) {
+                  shouldSnap = true;
+                }
+              }
+            } else if (currentStep.targetPosition) {
+              // Fallback: Distance Check
+              if (holdPos.distanceTo(targetPos) < 1.0) {
+                shouldSnap = true;
+              }
+            }
+
+            if (shouldSnap) {
               setIsSnapped(true);
               setIsHolding(false);
-              updateAssetSessionPos(targetAsset.id, targetPos);
+
+              updateAssetSessionTransform(targetAsset.id, targetPos, targetRot || targetAsset.rotation);
+
+              if (currentStep.snapAnchorId) {
+                setSnappedAnchors(prev => new Set(prev).add(currentStep.snapAnchorId!));
+              }
+
               setTimeout(handleNext, 800);
             }
           }
@@ -564,14 +627,24 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
     return null;
   };
 
-  const updateAssetSessionPos = (id: string, pos: THREE.Vector3) => {
-    setSessionAssets(prev => prev.map(a => a.id === id ? { ...a, position: [pos.x, pos.y, pos.z] } : a));
+  const updateAssetSessionTransform = (id: string, pos: THREE.Vector3, rot?: Vector3Tuple) => {
+    setSessionAssets(prev => prev.map(a => {
+      if (a.id === id) {
+        return {
+          ...a,
+          position: [pos.x, pos.y, pos.z],
+          rotation: rot || a.rotation
+        };
+      }
+      return a;
+    }));
   };
 
   const handleRestart = () => {
     setCompleted(false);
     setCurrentStepIndex(0);
     setSessionAssets(project.assets); // Reset asset positions
+    setSnappedAnchors(new Set()); // Reset hidden anchors
   };
 
   return (
@@ -603,8 +676,8 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
               const isTarget = currentStep?.targetAssetId === asset.id;
               const isAnchor = currentStep?.snapAnchorId === asset.id;
 
-              // Hide Snap Proxy if snapped (User request: hide to show "filled" state)
-              if (isSnapped && isAnchor) return null;
+              // Hide Snap Proxy if snapped or previously snapped (Persistent hide)
+              if ((isSnapped && isAnchor) || snappedAnchors.has(asset.id)) return null;
 
               return (
                 <group key={asset.id} name={asset.id}>
