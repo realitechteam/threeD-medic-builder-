@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Play, ArrowLeft } from 'lucide-react';
+import { BookOpen, Play, ArrowLeft, Copy, Check } from 'lucide-react';
 import { ProjectData } from '../types';
 
 interface LibraryProps {
@@ -12,12 +12,14 @@ interface SceneInfo {
     name: string;
     path: string;
     description: string;
+    code?: string;
 }
 
 const Library: React.FC<LibraryProps> = ({ onSelectScene, onBack }) => {
     const [loading, setLoading] = React.useState<string | null>(null);
     const [scenes, setScenes] = React.useState<SceneInfo[]>([]);
     const [discovering, setDiscovering] = React.useState(true);
+    const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
 
     // Dynamically discover all scenes from manifest.json
     React.useEffect(() => {
@@ -26,7 +28,27 @@ const Library: React.FC<LibraryProps> = ({ onSelectScene, onBack }) => {
                 const response = await fetch('/defaultScenes/manifest.json');
                 if (response.ok) {
                     const manifestScenes = await response.json();
-                    setScenes(manifestScenes);
+                    console.log('Raw manifest scenes:', manifestScenes);
+
+                    const scenesWithCodes = manifestScenes.map((scene: SceneInfo) => {
+                        // Extract filename from path (handle both / and \ just in case, though Mac is /)
+                        const fileName = scene.path.split(/[/\\]/).pop() || '';
+
+                        // Expect format: CODE_Name.json
+                        const parts = fileName.split('_');
+                        const potentialCode = parts[0];
+
+                        // Basic validation: 6 alphanumeric characters
+                        const isValidCode = /^[A-Z0-9]{6}$/.test(potentialCode);
+
+                        console.log(`Path: ${scene.path} -> File: ${fileName} -> Code: ${potentialCode} (Valid: ${isValidCode})`);
+
+                        return {
+                            ...scene,
+                            code: isValidCode ? potentialCode : undefined
+                        };
+                    });
+                    setScenes(scenesWithCodes);
                 }
             } catch (e) {
                 console.error('Failed to load scene manifest', e);
@@ -103,12 +125,44 @@ const Library: React.FC<LibraryProps> = ({ onSelectScene, onBack }) => {
                                     className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 hover:border-blue-500/50 transition-all group"
                                 >
                                     {/* Thumbnail Placeholder */}
-                                    <div className="w-full h-48 bg-slate-800 rounded-2xl mb-4 flex items-center justify-center overflow-hidden">
+                                    <div className="w-full h-48 bg-slate-800 rounded-2xl mb-4 flex items-center justify-center overflow-hidden relative">
                                         <BookOpen className="text-slate-700 group-hover:text-blue-500 transition-colors" size={64} />
+                                        {scene.code && (
+                                            <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-md border border-white/10">
+                                                <span className="text-xs font-mono font-bold text-blue-400 tracking-wider">{scene.code}</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Scene Info */}
-                                    <h3 className="text-lg font-bold text-white mb-2">{scene.name}</h3>
+                                    <div className="flex flex-col gap-0.5 mb-2">
+                                        {scene.code && (
+                                            <div className="flex items-center gap-2">
+                                                <div className="text-lg font-bold text-blue-400 leading-tight">
+                                                    Code: {scene.code}
+                                                </div>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigator.clipboard.writeText(scene.code!);
+                                                        setCopiedCode(scene.code || null);
+                                                        setTimeout(() => setCopiedCode(null), 2000);
+                                                    }}
+                                                    className="p-1.5 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-blue-400"
+                                                    title="Copy code"
+                                                >
+                                                    {copiedCode === scene.code ? (
+                                                        <Check size={16} />
+                                                    ) : (
+                                                        <Copy size={16} />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        )}
+                                        <h3 className="text-lg font-bold text-white leading-tight">
+                                            {scene.name}
+                                        </h3>
+                                    </div>
                                     <p className="text-slate-400 text-sm mb-4 line-clamp-2">{scene.description}</p>
 
                                     {/* Load Button */}
