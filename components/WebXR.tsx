@@ -103,13 +103,6 @@ export const WebXR = ({ project }: WebXRProps) => {
             controls.target.set(0, 1.6, 0);
             controls.update();
 
-            const floorGeometry = new THREE.PlaneGeometry(10, 10);
-            const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x666666 });
-            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            floor.rotation.x = -Math.PI / 2;
-            floor.receiveShadow = true;
-            scene.add(floor);
-
             scene.add(new THREE.HemisphereLight(0xbcbcbc, 0xa5a5a5, 3));
 
             const light = new THREE.DirectionalLight(0xffffff, 3);
@@ -136,23 +129,23 @@ export const WebXR = ({ project }: WebXRProps) => {
             document.body.appendChild(VRButton.createButton(renderer, sessionInit));
 
             // Controllers
-            controller1 = renderer.xr.getController(0);
-            scene.add(controller1);
+            // controller1 = renderer.xr.getController(0);
+            // scene.add(controller1);
 
-            controller2 = renderer.xr.getController(1);
-            scene.add(controller2);
+            // controller2 = renderer.xr.getController(1);
+            // scene.add(controller2);
 
             const controllerModelFactory = new XRControllerModelFactory();
             const handModelFactory = new XRHandModelFactory();
 
             // Hand 1 (Left)
-            controllerGrip1 = renderer.xr.getControllerGrip(0);
-            controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
-            scene.add(controllerGrip1);
+            // controllerGrip1 = renderer.xr.getControllerGrip(0);
+            // controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
+            // scene.add(controllerGrip1);
 
             hand1 = renderer.xr.getHand(0);
             // @ts-ignore
-            hand1.userData.currentHandModel = 0;
+            hand1.userData.currentHandModel = 2;
             scene.add(hand1);
 
             handModels.left = [
@@ -162,25 +155,27 @@ export const WebXR = ({ project }: WebXRProps) => {
             ];
 
             handModels.left.forEach((model, i) => {
-                model.visible = i === 0;
+                model.visible = i === 2;
                 hand1.add(model);
             });
 
+            /*
             hand1.addEventListener('pinchend', function (event: any) {
                 const hand = event.target;
                 handModels.left[hand.userData.currentHandModel].visible = false;
                 hand.userData.currentHandModel = (hand.userData.currentHandModel + 1) % 3;
                 handModels.left[hand.userData.currentHandModel].visible = true;
             });
+            */
 
             // Hand 2 (Right)
-            controllerGrip2 = renderer.xr.getControllerGrip(1);
-            controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
-            scene.add(controllerGrip2);
+            // controllerGrip2 = renderer.xr.getControllerGrip(1);
+            // controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
+            // scene.add(controllerGrip2);
 
             hand2 = renderer.xr.getHand(1);
             // @ts-ignore
-            hand2.userData.currentHandModel = 0;
+            hand2.userData.currentHandModel = 2;
             scene.add(hand2);
 
             handModels.right = [
@@ -190,16 +185,18 @@ export const WebXR = ({ project }: WebXRProps) => {
             ];
 
             handModels.right.forEach((model, i) => {
-                model.visible = i === 0;
+                model.visible = i === 2;
                 hand2.add(model);
             });
 
+            /*
             hand2.addEventListener('pinchend', function (event: any) {
                 const hand = event.target;
                 handModels.right[hand.userData.currentHandModel].visible = false;
                 hand.userData.currentHandModel = (hand.userData.currentHandModel + 1) % 3;
                 handModels.right[hand.userData.currentHandModel].visible = true;
             });
+            */
 
             // Ray Lines
             const geometry = new THREE.BufferGeometry().setFromPoints([
@@ -210,8 +207,8 @@ export const WebXR = ({ project }: WebXRProps) => {
             line.name = 'line';
             line.scale.z = 5;
 
-            controller1.add(line.clone());
-            controller2.add(line.clone());
+            // controller1.add(line.clone());
+            // controller2.add(line.clone());
 
             // Load additional models
             loadModels();
