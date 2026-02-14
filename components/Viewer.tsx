@@ -4,8 +4,11 @@ import React, { useState, Suspense, useEffect, useMemo, useRef, useCallback } fr
 import { ProjectData, Step, Asset, Vector3Tuple } from '../types';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { PointerLockControls, Environment, Text, ContactShadows, Float, useGLTF, Html, useProgress } from '@react-three/drei';
-import { XR, VRButton, useXR, Controllers } from '@react-three/xr';
 import { ChevronRight, ChevronLeft, LogOut, Info, CheckCircle2, Loader2, Anchor, Sparkles, Move, MousePointer, Smartphone, Monitor, RefreshCcw } from 'lucide-react';
+import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
+import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory.js';
+// @ts-ignore
+import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 // ... (skip down to Viewer component)
 
 
@@ -107,7 +110,7 @@ const Player = ({ initialPos, joystickInput, lookInput, collidableAssets, isMobi
   isMobile: boolean;
 }) => {
   const { camera, scene, gl } = useThree();
-  const { isPresenting } = useXR();
+  const isPresenting = gl.xr.isPresenting;
   const velocity = useRef(new THREE.Vector3());
   const moveState = useRef({ forward: false, backward: false, left: false, right: false });
   const hasInitialized = useRef(false);
@@ -159,7 +162,7 @@ const Player = ({ initialPos, joystickInput, lookInput, collidableAssets, isMobi
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('mousemove', handleMouseMove);
     };
-  }, [camera, isPresenting, isMobile]);
+  }, [camera, gl.xr, isMobile]);
 
   useEffect(() => {
     if (!hasInitialized.current) {
@@ -408,6 +411,71 @@ const GhostHint: React.FC<{
       </Html>
     </group>
   );
+};
+
+const WebXRManager = () => {
+  const { gl, scene, camera } = useThree();
+
+  useEffect(() => {
+    gl.xr.enabled = true;
+
+    // Controllers
+    const controller1 = gl.xr.getController(0);
+    scene.add(controller1);
+
+    const controller2 = gl.xr.getController(1);
+    scene.add(controller2);
+
+    const controllerModelFactory = new XRControllerModelFactory();
+    const handModelFactory = new XRHandModelFactory();
+
+    // Hand/Grip 1
+    const controllerGrip1 = gl.xr.getControllerGrip(0);
+    controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
+    scene.add(controllerGrip1);
+
+    const hand1 = gl.xr.getHand(0);
+    scene.add(hand1);
+    hand1.add(handModelFactory.createHandModel(hand1, 'mesh'));
+
+    // Hand/Grip 2
+    const controllerGrip2 = gl.xr.getControllerGrip(1);
+    controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
+    scene.add(controllerGrip2);
+
+    const hand2 = gl.xr.getHand(1);
+    scene.add(hand2);
+    hand2.add(handModelFactory.createHandModel(hand2, 'mesh'));
+
+    // Ray Lines
+    const geometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0, 0, -1)
+    ]);
+    const line = new THREE.Line(geometry);
+    line.name = 'line';
+    line.scale.z = 5;
+
+    controller1.add(line.clone());
+    controller2.add(line.clone());
+
+    // VR Button integration
+    const sessionInit = { requiredFeatures: ['hand-tracking'] };
+    const vrButton = VRButton.createButton(gl, sessionInit);
+    document.body.appendChild(vrButton);
+
+    return () => {
+      vrButton.remove();
+      scene.remove(controller1);
+      scene.remove(controller2);
+      scene.remove(controllerGrip1);
+      scene.remove(controllerGrip2);
+      scene.remove(hand1);
+      scene.remove(hand2);
+    };
+  }, [gl, scene]);
+
+  return null;
 };
 
 const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isShared = false }) => {
@@ -704,103 +772,98 @@ const Viewer: React.FC<ViewerProps> = ({ project, onExit, testMode = 'auto', isS
 
   return (
     <div className="relative w-full h-full bg-slate-950">
-      <VRButton />
       <Canvas shadows camera={{ position: [0, 1.6, 5], fov: 75 }}>
-        <XR>
-          <Suspense fallback={<ViewerLoader />}>
-            <Environment preset="city" />
-            <ambientLight intensity={0.5} />
-            <pointLight position={[10, 10, 10]} intensity={1} />
+        <Suspense fallback={<ViewerLoader />}>
+          <Environment preset="city" />
+          <WebXRManager />
+          <ambientLight intensity={0.5} />
+          <pointLight position={[10, 10, 10]} intensity={1} />
 
-            {/* PointerLockControls removed for free mouse movement */}
+          <Player initialPos={playerStart.position} joystickInput={joystickVal} lookInput={lookVal} collidableAssets={collidableAssets} isMobile={isMobile} />
+          <InteractionManager />
 
-            <Controllers />
-            <Player initialPos={playerStart.position} joystickInput={joystickVal} lookInput={lookVal} collidableAssets={collidableAssets} isMobile={isMobile} />
-            <InteractionManager />
+          <gridHelper args={[100, 100, 0x222222, 0x111111]} position={[0, 0, 0]} />
 
-            <gridHelper args={[100, 100, 0x222222, 0x111111]} position={[0, 0, 0]} />
+          {/* Ghost Hint for Move Steps */}
+          {currentStep && !completed && !isSnapped && (
+            <GhostHint step={currentStep} assets={sessionAssets} />
+          )}
 
-            {/* Ghost Hint for Move Steps */}
-            {currentStep && !completed && !isSnapped && (
-              <GhostHint step={currentStep} assets={sessionAssets} />
-            )}
+          {sessionAssets.map((asset) => {
+            if (asset.type === 'player_start') return null; // Don't show player start mesh in viewer
 
-            {sessionAssets.map((asset) => {
-              if (asset.type === 'player_start') return null; // Don't show player start mesh in viewer
+            const isTarget = currentStep?.targetAssetId === asset.id;
+            const isAnchor = currentStep?.snapAnchorId === asset.id;
 
-              const isTarget = currentStep?.targetAssetId === asset.id;
-              const isAnchor = currentStep?.snapAnchorId === asset.id;
+            // Check if this asset is a snap anchor for a future step (not current step)
+            const isFutureStepAnchor = project.steps.some((step, idx) =>
+              idx > currentStepIndex && step.snapAnchorId === asset.id
+            );
 
-              // Check if this asset is a snap anchor for a future step (not current step)
-              const isFutureStepAnchor = project.steps.some((step, idx) =>
-                idx > currentStepIndex && step.snapAnchorId === asset.id
-              );
+            // Hide Snap Proxy if:
+            // 1. Currently snapped and is current anchor
+            // 2. Previously snapped (in snappedAnchors set)
+            // 3. Is a snap anchor for a future step (not yet reached)
+            if ((isSnapped && isAnchor) || snappedAnchors.has(asset.id) || isFutureStepAnchor) return null;
 
-              // Hide Snap Proxy if:
-              // 1. Currently snapped and is current anchor
-              // 2. Previously snapped (in snappedAnchors set)
-              // 3. Is a snap anchor for a future step (not yet reached)
-              if ((isSnapped && isAnchor) || snappedAnchors.has(asset.id) || isFutureStepAnchor) return null;
-
-              return (
-                <group
-                  key={asset.id}
-                  name={asset.id}
-                  renderOrder={isTarget && isHolding ? 999 : 0}
-                >
-                  {asset.type === 'shape' && (
-                    <mesh
-                      name={asset.id}
-                      position={asset.position}
-                      rotation={asset.rotation}
-                      scale={asset.scale}
-                      visible={asset.visible !== false}
-                    >
-                      {asset.geometryType === 'box' && <boxGeometry args={[0.2, 0.2, 0.2]} />}
-                      {asset.geometryType === 'sphere' && <sphereGeometry args={[0.14, 32, 32]} />}
-                      {asset.geometryType === 'cone' && <coneGeometry args={[0.14, 0.3, 32]} />}
-                      {asset.geometryType === 'torus' && <torusGeometry args={[0.1, 0.04, 16, 100]} />}
-                      <meshStandardMaterial
-                        color={asset.color}
-                        roughness={0.3}
-                        metalness={0.2}
-                        emissive={isTarget ? '#3b82f6' : isAnchor ? '#10b981' : 'black'}
-                        emissiveIntensity={(isTarget || isAnchor) ? 0.4 : 0}
-                        depthTest={!(isTarget && isHolding)}
-                        depthWrite={!(isTarget && isHolding)}
-                      />
-                    </mesh>
-                  )}
-
-                  {asset.type === 'text' && (
-                    <Text
-                      position={asset.position}
-                      rotation={asset.rotation}
-                      scale={asset.scale}
-                      visible={asset.visible !== false}
-                      fontSize={0.5}
+            return (
+              <group
+                key={asset.id}
+                name={asset.id}
+                renderOrder={isTarget && isHolding ? 999 : 0}
+              >
+                {asset.type === 'shape' && (
+                  <mesh
+                    name={asset.id}
+                    position={asset.position}
+                    rotation={asset.rotation}
+                    scale={asset.scale}
+                    visible={asset.visible !== false}
+                  >
+                    {asset.geometryType === 'box' && <boxGeometry args={[0.2, 0.2, 0.2]} />}
+                    {asset.geometryType === 'sphere' && <sphereGeometry args={[0.14, 32, 32]} />}
+                    {asset.geometryType === 'cone' && <coneGeometry args={[0.14, 0.3, 32]} />}
+                    {asset.geometryType === 'torus' && <torusGeometry args={[0.1, 0.04, 16, 100]} />}
+                    <meshStandardMaterial
                       color={asset.color}
-                      anchorX="center"
-                      anchorY="middle"
-                    >
-                      {asset.content || ''}
-                    </Text>
-                  )}
-
-                  {asset.type === 'model' && asset.url && (
-                    <ViewerModel
-                      asset={asset}
-                      renderOrder={isTarget && isHolding ? 999 : 0}
-                      isHolding={isTarget && isHolding}
+                      roughness={0.3}
+                      metalness={0.2}
+                      emissive={isTarget ? '#3b82f6' : isAnchor ? '#10b981' : 'black'}
+                      emissiveIntensity={(isTarget || isAnchor) ? 0.4 : 0}
+                      depthTest={!(isTarget && isHolding)}
+                      depthWrite={!(isTarget && isHolding)}
                     />
-                  )}
-                </group>
-              );
-            })}
+                  </mesh>
+                )}
 
-            <ContactShadows position={[0, -0.01, 0]} opacity={0.4} scale={50} blur={2.4} />
-          </Suspense>
-        </XR>
+                {asset.type === 'text' && (
+                  <Text
+                    position={asset.position}
+                    rotation={asset.rotation}
+                    scale={asset.scale}
+                    visible={asset.visible !== false}
+                    fontSize={0.5}
+                    color={asset.color}
+                    anchorX="center"
+                    anchorY="middle"
+                  >
+                    {asset.content || ''}
+                  </Text>
+                )}
+
+                {asset.type === 'model' && asset.url && (
+                  <ViewerModel
+                    asset={asset}
+                    renderOrder={isTarget && isHolding ? 999 : 0}
+                    isHolding={isTarget && isHolding}
+                  />
+                )}
+              </group>
+            );
+          })}
+
+          <ContactShadows position={[0, -0.01, 0]} opacity={0.4} scale={50} blur={2.4} />
+        </Suspense>
       </Canvas>
 
       {/* Control UI Overlays */}

@@ -37,5 +37,6 @@ export interface ProjectData {
 
 export enum AppMode {
   EDITOR = 'EDITOR',
-  VIEWER = 'VIEWER'
+  VIEWER = 'VIEWER',
+  WEBXR = 'WEBXR'
 }

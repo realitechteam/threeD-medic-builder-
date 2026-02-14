@@ -4,7 +4,8 @@ import { AppMode, ProjectData } from './types';
 import Editor from './components/Editor';
 import Viewer from './components/Viewer';
 import Library from './components/Library';
-import { Box, Plus, BookOpen, Key, ArrowRight } from 'lucide-react';
+import { WebXR } from './components/WebXR';
+import { Box, Plus, BookOpen, Key, ArrowRight, Bug } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const DEFAULT_PROJECT: ProjectData = {
@@ -36,7 +37,7 @@ const DEFAULT_PROJECT: ProjectData = {
 };
 
 const App: React.FC = () => {
-  const [mode, setMode] = useState<AppMode | 'HOME' | 'LIBRARY'>('HOME');
+  const [mode, setMode] = useState<AppMode | 'HOME' | 'LIBRARY' | 'WEBXR'>('HOME');
   const [project, setProject] = useState<ProjectData>(DEFAULT_PROJECT);
   const [testMode, setTestMode] = useState<'auto' | 'desktop' | 'mobile' | 'vr'>('auto');
   const [isShared, setIsShared] = useState(false);
@@ -82,7 +83,23 @@ const App: React.FC = () => {
           if (sceneResponse.ok) {
             const sceneData = await sceneResponse.json();
             setProject(sceneData);
-            setMode(AppMode.VIEWER);
+
+            // Check for VR Support to auto-direct
+            let isVRSupported = false;
+            if (navigator.xr) {
+              try {
+                isVRSupported = await navigator.xr.isSessionSupported('immersive-vr');
+              } catch (e) {
+                console.log('WebXR not supported or error check:', e);
+              }
+            }
+
+            if (isVRSupported || testMode === 'vr') {
+              setMode(AppMode.WEBXR);
+            } else {
+              setMode(AppMode.VIEWER);
+            }
+
             setIsShared(true);
             setError(null);
             return;
@@ -98,8 +115,13 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    // Check for shared project via URL hash
+    // Check for URL hash commands
     const hash = window.location.hash;
+    if (hash === '#debug=xr' || hash === '#xr') {
+      setMode(AppMode.WEBXR);
+      return;
+    }
+
     if (hash && hash.startsWith('#project=')) {
       try {
         const base64Data = hash.replace('#project=', '');
@@ -202,6 +224,15 @@ const App: React.FC = () => {
                 </div>
                 <span className="font-bold text-sm">Library</span>
               </button>
+
+              {/* WebXR Mode */}
+              <button
+                onClick={() => setMode(AppMode.WEBXR)}
+                className="col-span-2 bg-slate-900/50 hover:bg-slate-800/80 border border-slate-700/50 text-slate-400 py-3 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 group"
+              >
+                <Bug size={16} className="group-hover:text-amber-500 transition-colors" />
+                <span className="font-bold text-xs">WebXR Mode</span>
+              </button>
             </div>
           </div>
         </motion.div>
@@ -238,7 +269,7 @@ const App: React.FC = () => {
           onTestModeChange={setTestMode}
           onBackToHome={() => setMode('HOME')}
         />
-      ) : (
+      ) : mode === AppMode.VIEWER ? (
         <Viewer
           project={project}
           onExit={() => {
@@ -251,7 +282,9 @@ const App: React.FC = () => {
           testMode={testMode}
           isShared={isShared}
         />
-      )}
+      ) : mode === AppMode.WEBXR ? (
+        <WebXR project={project} />
+      ) : null}
     </div>
   );
 };
