@@ -24,6 +24,7 @@ export const WebXR = ({ project }: WebXRProps) => {
         let loadingGroup: THREE.Group;
         let loadingTextMesh: THREE.Mesh;
         let loadingSpinner: THREE.Mesh;
+        let isLoading = true;
         let hand1: THREE.XRHandSpace, hand2: THREE.XRHandSpace;
         let controller1: THREE.XRTargetRaySpace, controller2: THREE.XRTargetRaySpace;
         let controllerGrip1: THREE.XRGripSpace, controllerGrip2: THREE.XRGripSpace;
@@ -41,13 +42,14 @@ export const WebXR = ({ project }: WebXRProps) => {
 
         function createLoadingUI() {
             loadingGroup = new THREE.Group();
-            loadingGroup.position.set(0, 1.6, -2); // In front of user
+            loadingGroup.position.set(0, 1.6, -2); // At eye level, in front of user
             scene.add(loadingGroup);
 
             // Spinner
-            const spinnerGeo = new THREE.TorusGeometry(0.1, 0.02, 16, 100, Math.PI * 1.5);
+            const spinnerGeo = new THREE.TorusGeometry(0.1, 0.015, 16, 100, Math.PI * 1.5);
             const spinnerMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
             loadingSpinner = new THREE.Mesh(spinnerGeo, spinnerMat);
+            loadingSpinner.position.y = 0.15; // Raised slightly
             loadingGroup.add(loadingSpinner);
 
             // Text
@@ -60,13 +62,14 @@ export const WebXR = ({ project }: WebXRProps) => {
             context.font = 'Bold 40px Inter, Arial';
             context.fillStyle = 'white';
             context.textAlign = 'center';
+            context.textBaseline = 'middle'; // Center text vertically
             context.fillText('Initializing VR...', 256, 64);
 
             const texture = new THREE.CanvasTexture(canvas);
             const textGeo = new THREE.PlaneGeometry(1, 0.25);
             const textMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
             loadingTextMesh = new THREE.Mesh(textGeo, textMat);
-            loadingTextMesh.position.y = -0.25;
+            loadingTextMesh.position.y = -0.1; // Closer to spinner
             loadingGroup.add(loadingTextMesh);
         }
 
@@ -79,6 +82,7 @@ export const WebXR = ({ project }: WebXRProps) => {
             context.font = 'Bold 40px Inter, Arial';
             context.fillStyle = 'white';
             context.textAlign = 'center';
+            context.textBaseline = 'middle'; // Center text vertically
             context.fillText(text, 256, 64);
             (material.map as THREE.CanvasTexture).needsUpdate = true;
         }
@@ -155,6 +159,13 @@ export const WebXR = ({ project }: WebXRProps) => {
                     }
                 }
 
+                // Scene Pre-warming: Compile shaders and prepare materials
+                updateLoadingText('Preparing scene...');
+                renderer.compile(scene, camera);
+
+                // Stabilization Buffer: Wait 1s to allow GPU data upload to finish
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
                 // Hide Loading UI when done
                 if (loadingGroup) {
                     scene.remove(loadingGroup);
@@ -169,6 +180,16 @@ export const WebXR = ({ project }: WebXRProps) => {
                         }
                     });
                 }
+
+                isLoading = false;
+
+                // Show controllers and hands
+                controller1.visible = true;
+                controller2.visible = true;
+                controllerGrip1.visible = true;
+                controllerGrip2.visible = true;
+                hand1.visible = true;
+                hand2.visible = true;
 
             } catch (error) {
                 console.error('Error in loadModels:', error);
@@ -220,9 +241,11 @@ export const WebXR = ({ project }: WebXRProps) => {
 
             // Controllers
             controller1 = renderer.xr.getController(0);
+            controller1.visible = false;
             userGroup.add(controller1);
 
             controller2 = renderer.xr.getController(1);
+            controller2.visible = false;
             userGroup.add(controller2);
 
             const controllerModelFactory = new XRControllerModelFactory();
@@ -230,10 +253,12 @@ export const WebXR = ({ project }: WebXRProps) => {
 
             // Hand 1 (Left)
             controllerGrip1 = renderer.xr.getControllerGrip(0);
+            controllerGrip1.visible = false;
             controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
             userGroup.add(controllerGrip1);
 
             hand1 = renderer.xr.getHand(0);
+            hand1.visible = false;
             // @ts-ignore
             hand1.userData.currentHandModel = 2;
             userGroup.add(hand1);
@@ -260,6 +285,7 @@ export const WebXR = ({ project }: WebXRProps) => {
 
             // Hand 2 (Right)
             controllerGrip2 = renderer.xr.getControllerGrip(1);
+            controllerGrip2.visible = false;
             controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
             userGroup.add(controllerGrip2);
 
@@ -323,6 +349,8 @@ export const WebXR = ({ project }: WebXRProps) => {
         const _right = new THREE.Vector3();
 
         function handleLocomotion(delta: number) {
+            if (isLoading) return;
+
             const session = renderer.xr.getSession();
             if (!session) return;
 
