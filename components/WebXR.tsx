@@ -20,6 +20,10 @@ export const WebXR = ({ project }: WebXRProps) => {
 
         let container: HTMLElement;
         let camera: THREE.PerspectiveCamera, scene: THREE.Scene, renderer: THREE.WebGLRenderer;
+        let userGroup: THREE.Group;
+        let loadingGroup: THREE.Group;
+        let loadingTextMesh: THREE.Mesh;
+        let loadingSpinner: THREE.Mesh;
         let hand1: THREE.XRHandSpace, hand2: THREE.XRHandSpace;
         let controller1: THREE.XRTargetRaySpace, controller2: THREE.XRTargetRaySpace;
         let controllerGrip1: THREE.XRGripSpace, controllerGrip2: THREE.XRGripSpace;
@@ -35,8 +39,64 @@ export const WebXR = ({ project }: WebXRProps) => {
         init();
         animate();
 
+        function createLoadingUI() {
+            loadingGroup = new THREE.Group();
+            loadingGroup.position.set(0, 1.6, -2); // In front of user
+            scene.add(loadingGroup);
+
+            // Spinner
+            const spinnerGeo = new THREE.TorusGeometry(0.1, 0.02, 16, 100, Math.PI * 1.5);
+            const spinnerMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
+            loadingSpinner = new THREE.Mesh(spinnerGeo, spinnerMat);
+            loadingGroup.add(loadingSpinner);
+
+            // Text
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 128;
+            const context = canvas.getContext('2d')!;
+            context.fillStyle = 'rgba(0,0,0,0)';
+            context.fillRect(0, 0, 512, 128);
+            context.font = 'Bold 40px Inter, Arial';
+            context.fillStyle = 'white';
+            context.textAlign = 'center';
+            context.fillText('Initializing VR...', 256, 64);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const textGeo = new THREE.PlaneGeometry(1, 0.25);
+            const textMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+            loadingTextMesh = new THREE.Mesh(textGeo, textMat);
+            loadingTextMesh.position.y = -0.25;
+            loadingGroup.add(loadingTextMesh);
+        }
+
+        function updateLoadingText(text: string) {
+            if (!loadingTextMesh) return;
+            const material = loadingTextMesh.material as THREE.MeshBasicMaterial;
+            const canvas = (material.map as THREE.CanvasTexture).image as HTMLCanvasElement;
+            const context = canvas.getContext('2d')!;
+            context.clearRect(0, 0, 512, 128);
+            context.font = 'Bold 40px Inter, Arial';
+            context.fillStyle = 'white';
+            context.textAlign = 'center';
+            context.fillText(text, 256, 64);
+            (material.map as THREE.CanvasTexture).needsUpdate = true;
+        }
+
         async function loadModels() {
             const loader = new GLTFLoader();
+
+            // Helper to load a single model with a Promise
+            const loadModelAsync = (url: string): Promise<THREE.Group> => {
+                return new Promise((resolve, reject) => {
+                    loader.load(url,
+                        (gltf) => resolve(gltf.scene),
+                        undefined,
+                        (error) => reject(error)
+                    );
+                });
+            };
+
             try {
                 let assetsToLoad = [];
 
@@ -48,10 +108,15 @@ export const WebXR = ({ project }: WebXRProps) => {
                     assetsToLoad = projectData.assets;
                 }
 
-                assetsToLoad.forEach((asset: any) => {
+                const total = assetsToLoad.filter(a => a.type === 'model' && a.url).length;
+                let current = 0;
+
+                // Sequential loading to prevent memory spikes and browser crashes
+                for (const asset of assetsToLoad) {
                     if (asset.type === 'model' && asset.url) {
-                        loader.load(asset.url, (gltf) => {
-                            const model = gltf.scene;
+                        try {
+                            updateLoadingText(`Loading Models: ${current}/${total}`);
+                            const model = await loadModelAsync(asset.url);
                             model.name = asset.id;
 
                             // Apply transformations
@@ -82,11 +147,32 @@ export const WebXR = ({ project }: WebXRProps) => {
                             }
 
                             scene.add(model);
-                        });
+                            current++;
+                            console.log(`Loaded model: ${asset.name || asset.id}`);
+                        } catch (error) {
+                            console.error(`Error loading model ${asset.url}:`, error);
+                        }
                     }
-                });
+                }
+
+                // Hide Loading UI when done
+                if (loadingGroup) {
+                    scene.remove(loadingGroup);
+                    loadingGroup.traverse(obj => {
+                        if ((obj as THREE.Mesh).isMesh) {
+                            (obj as THREE.Mesh).geometry.dispose();
+                            if (Array.isArray((obj as THREE.Mesh).material)) {
+                                ((obj as THREE.Mesh).material as THREE.Material[]).forEach(m => m.dispose());
+                            } else {
+                                ((obj as THREE.Mesh).material as THREE.Material).dispose();
+                            }
+                        }
+                    });
+                }
+
             } catch (error) {
-                console.error('Error loading models in WebXRDebug:', error);
+                console.error('Error in loadModels:', error);
+                updateLoadingText('Error loading models');
             }
         }
 
@@ -96,8 +182,12 @@ export const WebXR = ({ project }: WebXRProps) => {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x444444);
 
+            userGroup = new THREE.Group();
+            scene.add(userGroup);
+
             camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 50);
             camera.position.set(0, 1.6, 3);
+            userGroup.add(camera);
 
             controls = new OrbitControls(camera, container);
             controls.target.set(0, 1.6, 0);
@@ -130,10 +220,10 @@ export const WebXR = ({ project }: WebXRProps) => {
 
             // Controllers
             controller1 = renderer.xr.getController(0);
-            scene.add(controller1);
+            userGroup.add(controller1);
 
             controller2 = renderer.xr.getController(1);
-            scene.add(controller2);
+            userGroup.add(controller2);
 
             const controllerModelFactory = new XRControllerModelFactory();
             const handModelFactory = new XRHandModelFactory();
@@ -141,12 +231,12 @@ export const WebXR = ({ project }: WebXRProps) => {
             // Hand 1 (Left)
             controllerGrip1 = renderer.xr.getControllerGrip(0);
             controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
-            scene.add(controllerGrip1);
+            userGroup.add(controllerGrip1);
 
             hand1 = renderer.xr.getHand(0);
             // @ts-ignore
             hand1.userData.currentHandModel = 2;
-            scene.add(hand1);
+            userGroup.add(hand1);
 
             handModels.left = [
                 handModelFactory.createHandModel(hand1, 'boxes'),
@@ -171,12 +261,12 @@ export const WebXR = ({ project }: WebXRProps) => {
             // Hand 2 (Right)
             controllerGrip2 = renderer.xr.getControllerGrip(1);
             controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
-            scene.add(controllerGrip2);
+            userGroup.add(controllerGrip2);
 
             hand2 = renderer.xr.getHand(1);
             // @ts-ignore
             hand2.userData.currentHandModel = 2;
-            scene.add(hand2);
+            userGroup.add(hand2);
 
             handModels.right = [
                 handModelFactory.createHandModel(hand2, 'boxes'),
@@ -210,6 +300,9 @@ export const WebXR = ({ project }: WebXRProps) => {
             controller1.add(line.clone());
             controller2.add(line.clone());
 
+            // Loading UI
+            createLoadingUI();
+
             // Load additional models
             loadModels();
 
@@ -224,11 +317,63 @@ export const WebXR = ({ project }: WebXRProps) => {
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
+        // Memory management: Pre-allocate vectors and variables used in render loop
+        const clock = new THREE.Clock();
+        const _forward = new THREE.Vector3();
+        const _right = new THREE.Vector3();
+
+        function handleLocomotion(delta: number) {
+            const session = renderer.xr.getSession();
+            if (!session) return;
+
+            const speed = 2.5;
+            const rotationSpeed = 2.0;
+
+            for (const source of session.inputSources) {
+                if (source.gamepad) {
+                    const axes = source.gamepad.axes;
+
+                    // Left joystick (Movement) - Axis 2 (X), 3 (Y)
+                    if (source.handedness === 'left') {
+                        const x = axes[2] || 0;
+                        const y = axes[3] || 0;
+
+                        if (Math.abs(x) > 0.05 || Math.abs(y) > 0.05) {
+                            // Get camera direction (flattened to XZ plane)
+                            camera.getWorldDirection(_forward);
+                            _forward.y = 0;
+                            _forward.normalize();
+
+                            _right.crossVectors(camera.up, _forward).negate().normalize();
+
+                            userGroup.position.addScaledVector(_forward, -y * speed * delta);
+                            userGroup.position.addScaledVector(_right, x * speed * delta);
+                        }
+                    }
+
+                    // Right joystick (Rotation)
+                    if (source.handedness === 'right') {
+                        const x = axes[2] || 0;
+                        if (Math.abs(x) > 0.05) {
+                            userGroup.rotation.y -= x * rotationSpeed * delta;
+                        }
+                    }
+                }
+            }
+        }
+
         function animate() {
             renderer.setAnimationLoop(render);
         }
 
         function render() {
+            const delta = clock.getDelta();
+            handleLocomotion(delta);
+
+            if (loadingSpinner && loadingGroup.parent) {
+                loadingSpinner.rotation.z += delta * 4;
+            }
+
             renderer.render(scene, camera);
         }
 
@@ -236,8 +381,21 @@ export const WebXR = ({ project }: WebXRProps) => {
         return () => {
             renderer.setAnimationLoop(null);
             window.removeEventListener('resize', onWindowResize);
+
+            // Proper disposal of Three.js resources
+            scene.traverse((object) => {
+                if ((object as THREE.Mesh).isMesh) {
+                    const mesh = object as THREE.Mesh;
+                    mesh.geometry.dispose();
+                    if (Array.isArray(mesh.material)) {
+                        mesh.material.forEach(m => m.dispose());
+                    } else {
+                        mesh.material.dispose();
+                    }
+                }
+            });
+
             if (renderer && renderer.domElement) {
-                renderer.domElement.remove();
                 if (renderer.domElement.parentElement) {
                     renderer.domElement.parentElement.removeChild(renderer.domElement);
                 }
