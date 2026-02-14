@@ -129,19 +129,19 @@ export const WebXR = ({ project }: WebXRProps) => {
             document.body.appendChild(VRButton.createButton(renderer, sessionInit));
 
             // Controllers
-            // controller1 = renderer.xr.getController(0);
-            // scene.add(controller1);
+            controller1 = renderer.xr.getController(0);
+            scene.add(controller1);
 
-            // controller2 = renderer.xr.getController(1);
-            // scene.add(controller2);
+            controller2 = renderer.xr.getController(1);
+            scene.add(controller2);
 
             const controllerModelFactory = new XRControllerModelFactory();
             const handModelFactory = new XRHandModelFactory();
 
             // Hand 1 (Left)
-            // controllerGrip1 = renderer.xr.getControllerGrip(0);
-            // controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
-            // scene.add(controllerGrip1);
+            controllerGrip1 = renderer.xr.getControllerGrip(0);
+            controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
+            scene.add(controllerGrip1);
 
             hand1 = renderer.xr.getHand(0);
             // @ts-ignore
@@ -169,9 +169,9 @@ export const WebXR = ({ project }: WebXRProps) => {
             */
 
             // Hand 2 (Right)
-            // controllerGrip2 = renderer.xr.getControllerGrip(1);
-            // controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
-            // scene.add(controllerGrip2);
+            controllerGrip2 = renderer.xr.getControllerGrip(1);
+            controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
+            scene.add(controllerGrip2);
 
             hand2 = renderer.xr.getHand(1);
             // @ts-ignore
@@ -207,8 +207,8 @@ export const WebXR = ({ project }: WebXRProps) => {
             line.name = 'line';
             line.scale.z = 5;
 
-            // controller1.add(line.clone());
-            // controller2.add(line.clone());
+            controller1.add(line.clone());
+            controller2.add(line.clone());
 
             // Load additional models
             loadModels();
