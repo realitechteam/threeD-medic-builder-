@@ -25,6 +25,15 @@ export const WebXR = ({ project }: WebXRProps) => {
         let loadingTextMesh: THREE.Mesh;
         let loadingSpinner: THREE.Mesh;
         let isLoading = true;
+        let isStarted = false; // New: Lesson start flag
+        let currentStepIndex = 0;
+        let completed = false;
+        const snappedObjects = new Set<string>();
+        let holdingAssetId: string | null = null;
+        let holdingHand: THREE.Group | null = null;
+        let startButton: THREE.Mesh | null = null; // New: Start button mesh
+        const sessionAssets = [...(project?.assets || [])];
+
         let hand1: THREE.XRHandSpace, hand2: THREE.XRHandSpace;
         let controller1: THREE.XRTargetRaySpace, controller2: THREE.XRTargetRaySpace;
         let controllerGrip1: THREE.XRGripSpace, controllerGrip2: THREE.XRGripSpace;
@@ -47,44 +56,154 @@ export const WebXR = ({ project }: WebXRProps) => {
 
             // Spinner
             const spinnerGeo = new THREE.TorusGeometry(0.1, 0.015, 16, 100, Math.PI * 1.5);
-            const spinnerMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
+            const spinnerMat = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 1.0,
+                depthTest: false,
+                depthWrite: false
+            });
             loadingSpinner = new THREE.Mesh(spinnerGeo, spinnerMat);
-            loadingSpinner.position.y = 0.15; // Raised slightly
+            loadingSpinner.position.set(0, 0.25, 0.1);
+            loadingSpinner.renderOrder = 10001; // Higher
             loadingGroup.add(loadingSpinner);
 
-            // Text
+            // Text Panel
             const canvas = document.createElement('canvas');
-            canvas.width = 512;
-            canvas.height = 128;
+            canvas.width = 1024;
+            canvas.height = 512; // Taller for wrapped text
             const context = canvas.getContext('2d')!;
-            context.fillStyle = 'rgba(0,0,0,0)';
-            context.fillRect(0, 0, 512, 128);
-            context.font = 'Bold 40px Inter, Arial';
-            context.fillStyle = 'white';
-            context.textAlign = 'center';
-            context.textBaseline = 'middle'; // Center text vertically
-            context.fillText('Initializing VR...', 256, 64);
 
             const texture = new THREE.CanvasTexture(canvas);
-            const textGeo = new THREE.PlaneGeometry(1, 0.25);
-            const textMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+            const textGeo = new THREE.PlaneGeometry(2.5, 1.25); // Larger plane
+            const textMat = new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                depthTest: false,
+                depthWrite: false
+            });
             loadingTextMesh = new THREE.Mesh(textGeo, textMat);
-            loadingTextMesh.position.y = -0.1; // Closer to spinner
+            loadingTextMesh.position.set(0, -0.2, 0);
+            loadingTextMesh.renderOrder = 10000; // Base
             loadingGroup.add(loadingTextMesh);
+            loadingTextMesh.name = "loading_text_panel";
+
+            // Start Button
+            const btnGeo = new THREE.BoxGeometry(0.6, 0.2, 0.05);
+            const btnMat = new THREE.MeshBasicMaterial({
+                color: 0x3b82f6, // Blue button
+                transparent: true,
+                depthTest: false,
+                depthWrite: false
+            });
+            startButton = new THREE.Mesh(btnGeo, btnMat);
+            startButton.name = "btn_start";
+            startButton.position.set(0, -0.6, 0.1);
+            startButton.visible = false;
+            startButton.renderOrder = 10001; // Same as spinner level
+            loadingGroup.add(startButton);
+
+            // Start Button Label
+            const btnCanvas = document.createElement('canvas');
+            btnCanvas.width = 256;
+            btnCanvas.height = 128;
+            const btnCtx = btnCanvas.getContext('2d')!;
+            btnCtx.fillStyle = '#3b82f6';
+            btnCtx.fillRect(0, 0, 256, 128);
+            btnCtx.font = 'bold 60px Arial';
+            btnCtx.fillStyle = 'white';
+            btnCtx.textAlign = 'center';
+            btnCtx.textBaseline = 'middle';
+            btnCtx.fillText('START', 128, 64);
+
+            const btnTex = new THREE.CanvasTexture(btnCanvas);
+            const btnLabelPlane = new THREE.PlaneGeometry(0.5, 0.15);
+            const btnLabelMat = new THREE.MeshBasicMaterial({
+                map: btnTex,
+                transparent: true,
+                depthTest: false,
+                depthWrite: false
+            });
+            const btnLabelMesh = new THREE.Mesh(btnLabelPlane, btnLabelMat);
+            btnLabelMesh.position.z = 0.03;
+            btnLabelMesh.renderOrder = 10002; // Topmost
+            startButton.add(btnLabelMesh);
+
+            // Initial text
+            updateLoadingDisplay('Initializing VR...', true);
         }
 
-        function updateLoadingText(text: string) {
+        function wrapText(context: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) {
+            const words = text.split(' ');
+            let line = '';
+            let lines = [];
+
+            for (let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' ';
+                let metrics = context.measureText(testLine);
+                let testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    lines.push(line);
+                    line = words[n] + ' ';
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line);
+
+            // Center all lines relative to the starting Y
+            const totalHeight = lines.length * lineHeight;
+            let currentY = y - (totalHeight / 2) + (lineHeight / 2);
+
+            for (let i = 0; i < lines.length; i++) {
+                context.fillText(lines[i], x, currentY);
+                currentY += lineHeight;
+            }
+        }
+
+        function drawPanelBackground(context: CanvasRenderingContext2D, width: number, height: number, radius: number) {
+            context.fillStyle = 'rgba(5, 10, 20, 0.9)'; // Dark Navy Background from image
+            context.beginPath();
+            context.moveTo(radius, 0);
+            context.lineTo(width - radius, 0);
+            context.quadraticCurveTo(width, 0, width, radius);
+            context.lineTo(width, height - radius);
+            context.quadraticCurveTo(width, height, width - radius, height);
+            context.lineTo(radius, height);
+            context.quadraticCurveTo(0, height, 0, height - radius);
+            context.lineTo(0, radius);
+            context.quadraticCurveTo(0, 0, radius, 0);
+            context.closePath();
+            context.fill();
+
+            // White border
+            context.strokeStyle = 'white';
+            context.lineWidth = 8;
+            context.stroke();
+        }
+
+        function updateLoadingDisplay(text: string, showSpinner: boolean = true) {
             if (!loadingTextMesh) return;
             const material = loadingTextMesh.material as THREE.MeshBasicMaterial;
             const canvas = (material.map as THREE.CanvasTexture).image as HTMLCanvasElement;
             const context = canvas.getContext('2d')!;
-            context.clearRect(0, 0, 512, 128);
-            context.font = 'Bold 40px Inter, Arial';
+
+            context.clearRect(0, 0, 1024, 512);
+            drawPanelBackground(context, 1024, 512, 40);
+
+            context.font = 'Bold 48px Inter, Arial';
             context.fillStyle = 'white';
             context.textAlign = 'center';
-            context.textBaseline = 'middle'; // Center text vertically
-            context.fillText(text, 256, 64);
+            context.textBaseline = 'middle';
+
+            wrapText(context, text, 512, 256, 900, 60);
+
             (material.map as THREE.CanvasTexture).needsUpdate = true;
+            if (loadingSpinner) loadingSpinner.visible = showSpinner;
+        }
+
+        function updateLoadingText(text: string) {
+            updateLoadingDisplay(text, true);
         }
 
         async function loadModels() {
@@ -166,22 +285,8 @@ export const WebXR = ({ project }: WebXRProps) => {
                 // Stabilization Buffer: Wait 1s to allow GPU data upload to finish
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
-                // Hide Loading UI when done
-                if (loadingGroup) {
-                    scene.remove(loadingGroup);
-                    loadingGroup.traverse(obj => {
-                        if ((obj as THREE.Mesh).isMesh) {
-                            (obj as THREE.Mesh).geometry.dispose();
-                            if (Array.isArray((obj as THREE.Mesh).material)) {
-                                ((obj as THREE.Mesh).material as THREE.Material[]).forEach(m => m.dispose());
-                            } else {
-                                ((obj as THREE.Mesh).material as THREE.Material).dispose();
-                            }
-                        }
-                    });
-                }
-
                 isLoading = false;
+                updateStepUI();
 
                 // Show controllers and hands
                 controller1.visible = true;
@@ -191,10 +296,172 @@ export const WebXR = ({ project }: WebXRProps) => {
                 hand1.visible = true;
                 hand2.visible = true;
 
+                // Load ghost hints/anchors for the first step if needed
+                updateGhostHints();
+
             } catch (error) {
                 console.error('Error in loadModels:', error);
                 updateLoadingText('Error loading models');
             }
+        }
+
+        function updateStepUI() {
+            if (!project || !project.steps) return;
+
+            if (completed) {
+                updateLoadingDisplay('Congratulations! Lesson Complete', false);
+                if (startButton) startButton.visible = false;
+                return;
+            }
+
+            const currentStep = project.steps[currentStepIndex];
+
+            if (!isStarted) {
+                // Show text from step 1 even if not started
+                const introStep = project.steps[0];
+                const introText = introStep ? `${introStep.title}: ${introStep.instruction}` : 'Welcome to the Lesson! Press Start to Begin.';
+                updateLoadingDisplay(introText, false);
+                if (startButton) startButton.visible = true;
+                return;
+            }
+
+            if (currentStep) {
+                updateLoadingDisplay(`${currentStep.title}: ${currentStep.instruction}`, isLoading);
+                if (startButton) startButton.visible = false;
+            }
+        }
+
+        function updateGhostHints() {
+            // Remove existing ghosts
+            scene.children.filter(c => c.name.startsWith('ghost_')).forEach(c => scene.remove(c));
+
+            if (completed || !project || !project.steps) return;
+            const currentStep = project.steps[currentStepIndex];
+            if (currentStep?.targetAction === 'move') {
+                let targetPos: THREE.Vector3 | null = null;
+
+                if (currentStep.snapAnchorId) {
+                    const anchor = sessionAssets.find(a => a.id === currentStep.snapAnchorId);
+                    if (anchor) targetPos = new THREE.Vector3(...anchor.position);
+                } else if (currentStep.targetPosition) {
+                    targetPos = new THREE.Vector3(...currentStep.targetPosition);
+                }
+
+                if (targetPos) {
+                    const targetAsset = sessionAssets.find(a => a.id === currentStep.targetAssetId);
+                    if (targetAsset && targetAsset.url) {
+                        const loader = new GLTFLoader();
+                        loader.load(targetAsset.url, (gltf) => {
+                            const ghost = gltf.scene;
+                            ghost.name = `ghost_${targetAsset.id}`;
+                            ghost.position.copy(targetPos!);
+                            if (targetAsset.rotation) ghost.rotation.set(...(targetAsset.rotation as [number, number, number]));
+                            if (targetAsset.scale) ghost.scale.set(...(targetAsset.scale as [number, number, number]));
+
+                            ghost.traverse(child => {
+                                if ((child as THREE.Mesh).isMesh) {
+                                    const m = child as THREE.Mesh;
+                                    m.material = new THREE.MeshBasicMaterial({
+                                        color: 0x10b981,
+                                        transparent: true,
+                                        opacity: 0.2,
+                                        wireframe: true
+                                    });
+                                }
+                            });
+                            scene.add(ghost);
+
+                            // ADD "Place Here" Label
+                            const labelCanvas = document.createElement('canvas');
+                            labelCanvas.width = 256;
+                            labelCanvas.height = 64;
+                            const labelCtx = labelCanvas.getContext('2d')!;
+                            labelCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                            labelCtx.fillRect(0, 0, 256, 64);
+                            labelCtx.font = 'bold 30px Arial';
+                            labelCtx.fillStyle = '#10b981';
+                            labelCtx.textAlign = 'center';
+                            labelCtx.textBaseline = 'middle';
+                            labelCtx.fillText('PLACE HERE', 128, 32);
+
+                            const labelTex = new THREE.CanvasTexture(labelCanvas);
+                            const labelPlane = new THREE.PlaneGeometry(0.5, 0.125);
+                            const labelMat = new THREE.MeshBasicMaterial({ map: labelTex, transparent: true, depthTest: false });
+                            const labelMesh = new THREE.Mesh(labelPlane, labelMat);
+                            labelMesh.position.set(0, 0.2, 0); // Above the ghost
+                            labelMesh.name = `ghost_label_${targetAsset.id}`;
+                            ghost.add(labelMesh);
+                        });
+                    }
+                }
+            }
+        }
+
+        function handleNext() {
+            if (!project || !project.steps) {
+                completed = true;
+                updateStepUI();
+                updateGhostHints();
+                return;
+            }
+
+            if (currentStepIndex < project.steps.length - 1) {
+                currentStepIndex++;
+                updateStepUI();
+                updateGhostHints();
+            } else {
+                completed = true;
+                updateStepUI();
+                updateGhostHints();
+            }
+        }
+
+        function onSelectStart(event: any) {
+            if (isLoading || completed || !project || !project.steps) return;
+            const controller = event.target;
+
+            // Raycast logic
+            const tempMatrix = new THREE.Matrix4();
+            tempMatrix.identity().extractRotation(controller.matrixWorld);
+            const raycaster = new THREE.Raycaster();
+            raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+            raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            if (intersects.length > 0) {
+                for (const hit of intersects) {
+                    let targetObj = hit.object;
+                    while (targetObj && !targetObj.name && targetObj.parent) {
+                        targetObj = targetObj.parent;
+                    }
+
+                    const assetId = targetObj.name;
+                    const currentStep = project.steps[currentStepIndex];
+
+                    // Handle START Button
+                    if (assetId === "btn_start") {
+                        isStarted = true;
+                        handleNext(); // Move to next step immediately after start
+                        return;
+                    }
+
+                    if (isStarted && assetId && currentStep && assetId === currentStep.targetAssetId) {
+                        if (currentStep.targetAction === 'click') {
+                            handleNext();
+                            return;
+                        } else if (currentStep.targetAction === 'move' && !holdingAssetId) {
+                            holdingAssetId = assetId;
+                            holdingHand = controller;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        function onSelectEnd() {
+            holdingAssetId = null;
+            holdingHand = null;
         }
 
         function init() {
@@ -242,10 +509,14 @@ export const WebXR = ({ project }: WebXRProps) => {
             // Controllers
             controller1 = renderer.xr.getController(0);
             controller1.visible = false;
+            controller1.addEventListener('selectstart', onSelectStart);
+            controller1.addEventListener('selectend', onSelectEnd);
             userGroup.add(controller1);
 
             controller2 = renderer.xr.getController(1);
             controller2.visible = false;
+            controller2.addEventListener('selectstart', onSelectStart);
+            controller2.addEventListener('selectend', onSelectEnd);
             userGroup.add(controller2);
 
             const controllerModelFactory = new XRControllerModelFactory();
@@ -347,9 +618,44 @@ export const WebXR = ({ project }: WebXRProps) => {
         const clock = new THREE.Clock();
         const _forward = new THREE.Vector3();
         const _right = new THREE.Vector3();
+        const _holdPos = new THREE.Vector3();
 
         function handleLocomotion(delta: number) {
             if (isLoading) return;
+
+            // Movement logic...
+
+            // Interaction: Carrying Logic
+            if (holdingAssetId && holdingHand && project && project.steps) {
+                const heldObj = scene.getObjectByName(holdingAssetId);
+                if (heldObj) {
+                    // Object follows controller at a slight offset
+                    _holdPos.set(0, 0, -0.3).applyMatrix4(holdingHand.matrixWorld);
+                    heldObj.position.copy(_holdPos);
+
+                    // Check for snapping
+                    const currentStep = project.steps[currentStepIndex];
+                    let targetPos: THREE.Vector3 | null = null;
+
+                    if (currentStep.snapAnchorId) {
+                        const anchor = sessionAssets.find(a => a.id === currentStep.snapAnchorId);
+                        if (anchor) targetPos = new THREE.Vector3(...anchor.position);
+                    } else if (currentStep.targetPosition) {
+                        targetPos = new THREE.Vector3(...currentStep.targetPosition);
+                    }
+
+                    if (targetPos && _holdPos.distanceTo(targetPos) < 0.2) {
+                        // Snap!
+                        heldObj.position.copy(targetPos);
+                        const asset = sessionAssets.find(a => a.id === holdingAssetId);
+                        if (asset) asset.position = [targetPos.x, targetPos.y, targetPos.z];
+
+                        holdingAssetId = null;
+                        holdingHand = null;
+                        handleNext();
+                    }
+                }
+            }
 
             const session = renderer.xr.getSession();
             if (!session) return;
@@ -409,6 +715,15 @@ export const WebXR = ({ project }: WebXRProps) => {
         return () => {
             renderer.setAnimationLoop(null);
             window.removeEventListener('resize', onWindowResize);
+
+            if (controller1) {
+                controller1.removeEventListener('selectstart', onSelectStart);
+                controller1.removeEventListener('selectend', onSelectEnd);
+            }
+            if (controller2) {
+                controller2.removeEventListener('selectstart', onSelectStart);
+                controller2.removeEventListener('selectend', onSelectEnd);
+            }
 
             // Proper disposal of Three.js resources
             scene.traverse((object) => {
